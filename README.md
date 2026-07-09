@@ -113,9 +113,9 @@
 
 1. 将本仓库克隆或下载到 SillyTavern 的扩展目录：
 
-   ```
-   https://github.com/Thirteen-Moons/st-indextts2
-   ```
+   ```
+   https://github.com/Thirteen-Moons/ST-indexTTS2-X-Player.git
+   ```
 
 2. 下载Index-tts-2.0 整合包：
    ```

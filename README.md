@@ -1,3 +1,4 @@
+[English Version](README_EN.md)
 # ST-IndexTTS2-X-player🎙️
 
   

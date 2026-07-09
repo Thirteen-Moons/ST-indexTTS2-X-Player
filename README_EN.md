@@ -21,45 +21,46 @@ Version: 1.0.0 | Author: Thirteen-Moons
 
 - Assign a unique voice to each character and let the extension auto-match during playback.
 - Quick voice management and switching.
+<br><br>
 
 ### 📚 Flexible Text Parsing Modes
 
 - **Audiobook Mode**: Reads the full text while filtering out all symbols and content that should not be spoken aloud.
 - **RP Mode**: Reads only dialogue inside quotation marks (supports Chinese, English, and corner brackets).
 - **GAL Mode**: Supports multi-character voice assignment per card, scene sound effects, and reads only tagged dialogue lines.
-
+<br><br>
 ### ⚡ Real-Time Auto Streaming Playback
 
 - **Smart Segmentation**: Intelligently splits long text so inference happens without waiting.
 - **Auto Play**: Automatically generates and plays voice after receiving a reply.
-
+<br><br>
 ### 💓 Emotion Vectors
 
 - Supports 8-dimensional emotion vectors for more expressive and emotionally rich speech synthesis.
-
+<br><br>
 ### 🖱️ Floating Player
 
 - Play / Pause control
 - Draggable progress bar
 - Volume and speed control
 - Optional hide
-
+<br><br>
 ### 🏠 Scene Sound Effects
 
 - Assign background audio to different scenes
 - Auto-play on trigger
 - Optional loop playback
-
+<br><br>
 ### 💻 Multi-Preset Management
 
 - Save and switch between multiple voice presets.
-
+<br><br>
 ### 💾 Audio Cache
 
 - Local audio cache: already generated voice lines can be replayed instantly without re-inference.
 - Supports import / export of audio cache.
 - Management: custom cache path, clear cache.
-
+<br><br>
 ---
 
 ## 🔧 What's New & Fixed
@@ -70,26 +71,26 @@ Version: 1.0.0 | Author: Thirteen-Moons
 - **Volume Overflow**: Fixed rare volume out-of-bounds errors.
 - **Mobile Floating Player**: Fixed the floating player not displaying on mobile devices.
 - **Code Simplification**: Significantly streamlined code for smoother runtime and inference.
-
+<br><br>
 ### ⭐ New Features
 
 - **Regex Filtering**:
   - When custom regex is **not** enabled, built-in hard filtering is used. Even complex Markdown, JSON, and other text formats are cleanly filtered (except for a few emojis), leaving only normal dialogue to be read aloud.
   - Optional custom regex: When enabled, only the user-provided regex is applied.
-
+<br><br>
 - **Real-Time Pseudo-Streaming Segmentation**: New segmentation logic filters long text before splitting. Each sentence is played immediately upon inference completion while the next sentence is inferred in parallel, achieving better real-time output.
-
+<br><br>
 - **RP Parsing Mode**: Designed for common novel-style RP. Reads only inside quotation marks, supporting Chinese, English, and corner brackets.
   - <small>*Optional: Delayed playback. Set a delay based on your reading speed.*</small>
-
+<br><br>
 - **True Group Chat Voice Assignment**: In SillyTavern's true group chat (multiple character cards combined into one chat), each character can be assigned a different voice without requiring prompt injection. Supported in all three parsing modes.
-
+<br><br>
 - **Single-Character Mode**: Voice binding works for single-character chats without needing prompt injection. Supported in all three parsing modes.
-
+<br><br>
 - **GAL Mode Format Compatibility**: Enhanced format compatibility. Dialogue content now supports Chinese, English, and corner brackets, as well as no brackets at all.
-
+<br><br>
 - **Hide Player**: Option to hide the floating player.
-
+<br><br>
 ---
 
 ## 📖 Installation & Usage
@@ -112,31 +113,31 @@ Version: 1.0.0 | Author: Thirteen-Moons
    - Note: Inference and output speed depend on your GPU. Better GPU = faster speed.
 
 4. Enable **IndexTTS2 Player** in the SillyTavern Extensions panel.
-
+<br><br>
 ---
 
 ### 🚀 Quick Setup
 
 1. **API Address**: Keep the default. If you need emotion vectors, change the `TTS Service Address` to `http://127.0.0.1:7880/api/v1/tts/tasks`
    - If playback works on PC but fails on mobile LAN, replace `127.0.0.1:7880` in all three address fields with your local IPv4 address.
-
+<br><br>
 2. Add reference audio in the backend voice model folder.
    - Place character reference audio files in the backend `api/ckpt/` directory (create if it doesn't exist). The dropdown will automatically list all available files.
    - Place scene audio files in the backend `api/pjy/` directory (create if it doesn't exist). You must click "Authorize" after each SillyTavern restart for this to take effect. Scene audio is only available in GAL mode, and filenames must match the tag names.
    - Note: Reference audio should ideally be 10-20 seconds long, containing declarative sentences, interjections, questions, and laughter for best results. Actual voice quality depends on the reference audio quality.
-
+<br><br>
 3. Click the ⚙ button next to the AI message you want to voice. Open the voice config panel, enter the character name, save, then select the desired voice from the dropdown to bind.
-
+<br><br>
 4. In the extension settings panel, select your desired parsing mode: Audiobook, RP, or GAL.
-
+<br><br>
 5. Check "Auto-infer after reply" and "Auto-continue after N sentences". Recommended inference count: 1.
-
+<br><br>
 6. Start chatting.
-
+<br><br>
 ---
 
 ## ⚙ Settings Reference
-
+<br><br>
 | Setting | Description (top to bottom) |
 | --- | --- |
 | API Address | IndexTTS2 inference endpoint |
@@ -158,6 +159,7 @@ Version: 1.0.0 | Author: Thirteen-Moons
 | Fade In / Fade Out | Adjust scene audio fade duration |
 | Loop Scene Audio in Same Scene | Enable to loop scene audio within the same scene |
 
+<br><br>
 ---
 
 ## 🎵 Text Parsing Modes Explained
@@ -167,6 +169,7 @@ Version: 1.0.0 | Author: Thirteen-Moons
 Reads the full text while filtering out all symbols and content that should not be spoken. This includes Markdown symbols, code blocks, links, italic text, asterisks, XML tags, etc.
 
 **Best for:** Listening to stories, AI conversations, and common parenthetical RP dialogue.
+<br><br>
 
 **Parsing Example**
 
@@ -204,6 +207,7 @@ I... didn't mean it that way.
 Reads only dialogue inside quotation marks. Supports Chinese, English, and corner brackets. **Best for common novel-style RP dialogue.**
 
 You can set a delay before playing the next line based on the approximate length of the descriptive paragraphs that are skipped.
+<br><br>
 
 **Parsing Example**
 
@@ -222,6 +226,7 @@ The train should arrive in ten minutes.
 ### ✅ GAL Mode
 
 **The only mode that supports single-card multi-character voice assignment, emotion vectors, and scene audio.** Requires prompt injection to be enabled.
+<br><br>
 
 **Parsing Example**
 
@@ -255,12 +260,13 @@ Hey, look at that cloud over there, it really looks like a cat.
 ---
 
 #### GAL Mode Supported Message Format
+<br>
 
 Dialogue content supports Chinese, English, and corner brackets, as well as no brackets at all.
 
-Prefix tags one through three are all optional.
+If you need to have multiple characters voiced separately in a single character sheet, you must have the `[Character Name]` tags. 
 
-If you need emotion vectors and scene audio, you must include `[Emotion]` and `[Scene]` tags.
+If you need emotion vectors and scene audio, you must include `[Emotion]` and `[Scene]` tags. The order of the tags cannot be changed.
 
 ```
 [Character][Emotion][Scene]「Dialogue」
@@ -286,8 +292,7 @@ The name of the currently speaking character.
 
 ### Emotion:
 Choose only one that fits the current situation from the following:
-Happy, Sad, Angry, Scared, Surprised, Calm, Disgusted, Wronged, Heartbroken, Nervous, Terrified, Pretending to Be Calm While Scared, Panicked,
-Delighted, Laughing and Crying, Love-Hate, Embarrassed, Envious, Jealous, Nostalgic, Anxiously Expectant, Heartached, Helpless, Doting, Tsundere, Shy, Flustered
+Happy, angry, sad, scared, disgusted, gloomy, surprised, calm
 
 ### Dialogue Content:
 Wrap the character's spoken lines in 「」 or "".
@@ -309,6 +314,8 @@ He turned his head in shock, as if he couldn't believe what he'd heard.
 ```
 
 <small>*Note: Scene names should match your background audio files. For example, if your scene audio file is `Park.mp3`, then the `[Scene]` tag in the prompt must be the word "Park".*</small>
+
+<br>
 
 ---
 

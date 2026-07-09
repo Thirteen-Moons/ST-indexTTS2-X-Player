@@ -1,0 +1,10 @@
+{
+    "name": "st-indextts2",
+    "display_name": "十三的歌：IndexTTS2 Player",
+    "description": "IndexTTS2 播放器，支持引号检测与行内播放。",
+    "author": "Thirteen-Moons",
+    "version": "1.0.0",
+    "loading_order": 101,
+    "js": "index.js",
+    "css": "style.css"
+}

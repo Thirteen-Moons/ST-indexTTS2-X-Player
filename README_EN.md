@@ -119,7 +119,8 @@ Version: 1.0.0 | Author: Thirteen-Moons
 ### 🚀 Quick Setup
 
 1. **API Address**: Keep the default. If you need emotion vectors, change the `TTS Service Address` to `http://127.0.0.1:7880/api/v1/tts/tasks`
-   - If playback works on PC but fails on mobile LAN, replace `127.0.0.1:7880` in all three address fields with your local IPv4 address.
+   - If playback works on PC but fails on mobile LAN, replace `127.0.0.1` in all three address fields with your local IPv4 address.
+   - If you still get no audio output after applying the changes above, open the backend `api.py` file, locate line 127, and change the listening address to `0.0.0.0`.
 <br><br>
 2. Add reference audio in the backend voice model folder.
    - Place character reference audio files in the backend `api/ckpt/` directory (create if it doesn't exist). The dropdown will automatically list all available files.

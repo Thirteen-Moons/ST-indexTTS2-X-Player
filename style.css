@@ -1068,7 +1068,7 @@
    Delete Button (删除按钮)
    ============================================================ */
 .indextts-del-btn {
-    width: 30px;
+    width: 25px;
     height: 36px;
     display: flex;
     align-items: center;
@@ -1166,4 +1166,29 @@
     padding: 8px 16px;
     background: var(--black30a, rgba(0, 0, 0, 0.3));
     border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(0, 0, 0, 0.5));
+}
+@media (max-width: 768px) {
+    /* 角色名：自适应，释放多余空间 */
+    .indextts-char-name {
+        width: auto !important;
+        min-width: 45px !important;
+        max-width: 120px !important;
+        flex-shrink: 0 !important;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    
+    /* 下拉框：占据左边的空白*/
+    .indextts-voice-select {
+        flex: 1 !important;
+        min-width: 80px !important;
+        max-width: 112px !important;  /* 限制最大宽度，防止挤到右边 */
+        width: auto !important;
+    }
+
+    /* 输入框缩短*/
+    .indextts-voice-input {
+        width: 100px !important;  
+    }    
 }

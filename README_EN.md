@@ -108,11 +108,12 @@ Version: 1.0.0 | Author: Thirteen-Moons
    ```
    https://tcnlo9s668u9.feishu.cn/wiki/KRQ9wuqiViSOmJkfHxacNFfknjh
    ```
+3. Replace the **api.py** in your backend directory (project\IndexTTS\nvidia\api.py) with the **api.py** provided in this repository.
 
-3. Start the IndexTTS2 backend voice model service at `project/IndexTTS/nvidia/api.bat`
+4. Start the IndexTTS2 backend voice model service at `project/IndexTTS/nvidia/api.bat`
    - Note: Inference and output speed depend on your GPU. Better GPU = faster speed.
 
-4. Enable **IndexTTS2 Player** in the SillyTavern Extensions panel.
+5. Enable **IndexTTS2 Player** in the SillyTavern Extensions panel.
 <br><br>
 ---
 
@@ -120,7 +121,6 @@ Version: 1.0.0 | Author: Thirteen-Moons
 
 1. **API Address**: Keep the default. If you need emotion vectors, change the `TTS Service Address` to `http://127.0.0.1:7880/api/v1/tts/tasks`
    - If playback works on PC but fails on mobile LAN, replace `127.0.0.1` in all three address fields with your local IPv4 address.
-   - If you still get no audio output after applying the changes above, open the backend `api.py` file, locate line 127, and change the listening address to `0.0.0.0`.
 <br><br>
 2. Add reference audio in the backend voice model folder.
    - Place character reference audio files in the backend `api/ckpt/` directory (create if it doesn't exist). The dropdown will automatically list all available files.
@@ -327,3 +327,30 @@ See [LICENSE](./LICENSE).
 ---
 
 🤝 Welcome to ST-IndexTTS2-X-Player.
+
+---
+# 🖊 Changelog
+
+## v1.1.1
+
+### Fixes
+- Fixed the cramped layout of the mobile configuration panel.
+- Fixed an issue in GAL mode where scene audio restarted from the beginning on every line during real-time voice generation. Scene audio now **continues seamlessly** within the same scene inside a single message.
+
+### Improvements
+- Scene audio now works on mobile devices.
+- Further refined the built-in hard filter for cleaner text output in Audiobook mode.
+- GAL mode bracket tags can now be hidden using the "Display Only" regex option without breaking tag matching.
+- Different characters within the same message can now have different scene audio. The scene audio switches automatically when the next character speaks, preventing audio overlap or confusion.
+
+  Example:
+  ```
+  [Xiao Ming][Calm][Bathroom]...
+  [Xiao Hong][Happy][Plaza]...
+  ```
+- Reworked scene audio extraction logic for faster loading.
+
+### New Features
+- Update Checker: The extension panel now displays a "New!" badge when a newer version is available.
+
+---

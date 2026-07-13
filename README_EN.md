@@ -4,7 +4,7 @@ A text-to-speech (TTS) extension designed for SillyTavern.
 
 Built upon the original [indexTTS player](https://github.com/bronie-honkai/st-indextts2) and its second iteration [st-indextts2-plus](https://github.com/xiaoxiongweihu/st-indextts2-plus), this third iteration brings further development and optimization for a smoother SillyTavern voice experience.
 
-Version: 1.0.0 | Author: Thirteen-Moons
+Version: 1.1.1 | Author: Thirteen-Moons
 
 ---
 

@@ -320,6 +320,26 @@ He turned his head in shock, as if he couldn't believe what he'd heard.
 
 ---
 
+## ❓ How to Obtain Reference Audio
+
+1. Open a game or other resource containing the character voice you like.
+
+2. Turn off background music and sound effects. Select a segment of the character's dialogue — ideally clear, free of echo and noise, including long declarative sentences, short questions, interjections, and laughter (the dialogue content should be coherent rather than a collection of unrelated lines).
+
+3. Start screen recording on your computer or mobile device (make sure to disable the microphone), then play the character dialogue and record it.
+
+4. Trim the recorded MP4 file to 10–20 seconds using video editing software (such as CapCut), and save the file.
+
+5. Transfer the file to your computer and make a backup copy, in case the original gets corrupted and you need to re-edit for better results.
+
+6. Simply change the backup file's extension to an audio format like **.mp3** or **.wav**, rename it to your liking, and save.
+
+7. Place the finished audio file into the reference audio **ckyp** directory.
+
+The same process applies to scene audio.
+
+---
+
 ## 📄 License
 
 See [LICENSE](./LICENSE).

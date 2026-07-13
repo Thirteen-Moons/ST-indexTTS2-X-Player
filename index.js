@@ -17,8 +17,8 @@
         autoPlay: false,
         streamingPlay: false,
         streamingSkipCount: 1,
-        rpSentenceDelay: '', // RP模式句间延迟(秒)
-        showFloatingPlayer: true, // 是否显示悬浮播放器
+        rpSentenceDelay: '', 
+        showFloatingPlayer: true, 
         cacheImportPath: '\\\\SillyTavern\\\\data\\\\TTSsound',
         ambientSoundPath: '',
         ambientSoundVolume: 0.4,
@@ -42,7 +42,7 @@
     // ==================== Utility Functions ====================
     /**
      * 将 HTML 转换为 Markdown 文本
-     * 保留换行符 \n，仅合并水平空白，以确保听书模式分段正则正常工作
+     * 注意：保留换行符 \n，仅合并水平空白，以确保听书模式分段正则正常工作
      */
     function htmlToMarkdown(html) {
         let text = html;
@@ -58,9 +58,9 @@
             const level = match.match(/<h([1-6])/)[1];
             return '\n' + '#'.repeat(level) + ' ' + content + '\n';
         });
-        text = text.replace(/<[^>]+>/g, ' ');// 清理剩余 HTML 标签
-        text = text.replace(/[ \t]+/g, ' ');// 仅合并水平空白，保留换行符
-        text = text.replace(/\n{2,}/g, '\n');// 合并多余换行
+        text = text.replace(/<[^>]+>/g, ' ');
+        text = text.replace(/[ \t]+/g, ' ');
+        text = text.replace(/\n{2,}/g, '\n');
         text = text.trim();
         return text;
     }
@@ -352,12 +352,15 @@
     // ==================== Ambient Sound Player ====================
     const AmbientPlayer = (function () {
         let dirHandle = null, currentScene = null, currentAudio = null, fadeTimer = null;
+        let playSceneRequestId = 0; // 防止异步错乱
+
         function _getFadeDuration() { return parseInt(getSettings().ambientFadeDuration ?? 0) || 0; }
         async function init() {
             try {
                 const saved = await AudioStorage.getConfig('ambientDirHandle');
                 if (saved) { dirHandle = saved; console.log('[IndexTTS2][Ambient] dir handle restored'); }
             } catch (e) { console.warn('[IndexTTS2][Ambient] init error:', e); }
+            preloadScenes();
         }
         async function setDirHandle(handle) { if (!handle) return; dirHandle = handle; await AudioStorage.saveConfig('ambientDirHandle', handle); }
         function getDirHandle() { return dirHandle; }
@@ -375,92 +378,158 @@
             return false;
         }
         function _getVolume() { const s = getSettings(); return Math.max(0, Math.min(1, parseFloat(s.ambientSoundVolume ?? 0.4))); }
-        function _cancelFade() { if (fadeTimer !== null) { cancelAnimationFrame(fadeTimer); fadeTimer = null; } }
+        //独立淡入淡出
+        let fadeOutTimer = null, fadeInTimer = null;
+        function _cancelFadeOut() { if (fadeOutTimer !== null) { cancelAnimationFrame(fadeOutTimer); fadeOutTimer = null; } }
+        function _cancelFadeIn() { if (fadeInTimer !== null) { cancelAnimationFrame(fadeInTimer); fadeInTimer = null; } }
+        function _cancelFade() { _cancelFadeOut(); _cancelFadeIn(); }
+
         function _fadeOut(audioEl, onDone) {
-            _cancelFade();
+            _cancelFadeOut();
             const fadeDur = _getFadeDuration();
             if (!fadeDur) { audioEl.pause(); audioEl.src = ''; if (onDone) onDone(); return; }
             const start = performance.now();
             const startVol = audioEl.volume;
             function step(now) {
-                const t = Math.min(1, (now - start) / fadeDur);
-                audioEl.volume = startVol * (1 - t);
-                if (t < 1) { fadeTimer = requestAnimationFrame(step); }
-                else { audioEl.pause(); audioEl.src = ''; fadeTimer = null; if (onDone) onDone(); }
+                const t = Math.max(0, Math.min(1, (now - start) / fadeDur));
+                audioEl.volume = Math.max(0, Math.min(1, startVol * (1 - t)));
+                if (t < 1) { fadeOutTimer = requestAnimationFrame(step); }
+                else { audioEl.pause(); audioEl.src = ''; fadeOutTimer = null; if (onDone) onDone(); }
             }
-            fadeTimer = requestAnimationFrame(step);
+            fadeOutTimer = requestAnimationFrame(step);
         }
+
         function _fadeIn(audioEl) {
-            _cancelFade();
+            _cancelFadeIn();
             const target = _getVolume();
             const fadeDur = _getFadeDuration();
             if (!fadeDur) { audioEl.volume = target; return; }
             audioEl.volume = 0;
             const start = performance.now();
             function step(now) {
-                const t = Math.min(1, (now - start) / fadeDur);
-                audioEl.volume = target * t;
-                if (t < 1) { fadeTimer = requestAnimationFrame(step); } else { fadeTimer = null; }
+                const t = Math.max(0, Math.min(1, (now - start) / fadeDur));
+                audioEl.volume = Math.max(0, Math.min(1, target * t));
+                if (t < 1) { fadeInTimer = requestAnimationFrame(step); } else { fadeInTimer = null; }
             }
-            fadeTimer = requestAnimationFrame(step);
+            fadeInTimer = requestAnimationFrame(step);
         }
+
+        // ==================== 场景音列表缓存 ====================
+        let sceneAudioListCache = null;
+        let sceneAudioListPromise = null;
+        let sceneAudioListFetchTime = 0;
+        const SCENE_LIST_TTL = 60000;
+
+        async function _getSceneAudioList() {
+            if (sceneAudioListCache && (Date.now() - sceneAudioListFetchTime < SCENE_LIST_TTL)) {
+                return sceneAudioListCache;
+            }
+            if (sceneAudioListPromise) return sceneAudioListPromise;
+
+            const rawApiUrl = getSettings().apiUrl || 'http://127.0.0.1:7880';
+            const baseUrl = (rawApiUrl.match(/^(https?:\/\/[^\/]+)/i)?.[0] || 'http://127.0.0.1:7880').replace(/\/$/, '');
+
+            sceneAudioListPromise = fetch(`${baseUrl}/api/v1/scene_audios`)
+                .then(res => res.json())
+                .then(data => {
+                    sceneAudioListCache = new Set(data.scenes || []);
+                    sceneAudioListFetchTime = Date.now();
+                    console.log('[IndexTTS2][Ambient] 场景音列表已加载:', sceneAudioListCache.size, '个文件');
+                    return sceneAudioListCache;
+                })
+                .catch(e => {
+                    console.warn('[IndexTTS2][Ambient] 获取场景音列表失败，下次重试:', e);
+                    return new Set();
+                })
+                .finally(() => {
+                    sceneAudioListPromise = null;
+                });
+            return sceneAudioListPromise;
+        }
+
+        async function preloadScenes() {
+            try { await _getSceneAudioList(); } catch (e) { console.warn('[IndexTTS2][Ambient] preloadScenes failed:', e); }
+        }
+
         async function _loadScene(sceneName) {
-            console.log('[IndexTTS2][Ambient] _loadScene: sceneName=' + sceneName + ' dirHandle=' + (dirHandle ? dirHandle.name : 'NULL'));
-            if (!dirHandle) { console.warn('[IndexTTS2][Ambient] _loadScene: dirHandle is null, 请在设置中选择背景音目录'); return null; }
+            console.log('[IndexTTS2][Ambient] _loadScene: sceneName=' + sceneName);
+            if (!sceneName) return null;
+            const rawApiUrl = getSettings().apiUrl || 'http://127.0.0.1:7880';
+            const baseUrl = (rawApiUrl.match(/^(https?:\/\/[^\/]+)/i)?.[0] || 'http://127.0.0.1:7880').replace(/\/$/, '');
             try {
-                let hasPerm = await queryPermission();
-                console.log('[IndexTTS2][Ambient] _loadScene: queryPermission=' + hasPerm);
-                if (!hasPerm) {
-                    console.warn('[IndexTTS2][Ambient] 权限未授权，请在设置面板点击「🔄 授权」');
-                    if (window.toastr) window.toastr.warning('背景音需要授权：请打开 IndexTTS2 设置 → 背景音效 → 点击「🔄 授权」', { timeOut: 6000 });
-                    return null;
-                }
+                const listSet = await _getSceneAudioList();
                 const candidates = [ sceneName + '.mp3', sceneName + '.wav', sceneName + '.ogg', sceneName + '.m4a', sceneName + '.aac' ];
                 for (const name of candidates) {
-                    try {
-                        console.log('[IndexTTS2][Ambient] _loadScene: trying file:', name);
-                        const fileHandle = await dirHandle.getFileHandle(name);
-                        const file = await fileHandle.getFile();
-                        const url = URL.createObjectURL(file);
-                        console.log('[IndexTTS2][Ambient] _loadScene: found! url=', url);
+                    if (listSet.has(name)) {
+                        const url = `${baseUrl}/pjy/${encodeURIComponent(name)}`;
+                        console.log('[IndexTTS2][Ambient] _loadScene: 在列表中发现 url=', url);
                         return url;
-                    } catch (_) { /* not found, try next */ }
+                    }
                 }
-                console.warn('[IndexTTS2][Ambient] _loadScene: no matching file for scene:', sceneName, '— tried:', candidates);
-            } catch (e) { console.warn('[IndexTTS2][Ambient] loadScene error:', e); }
+                console.warn('[IndexTTS2][Ambient] _loadScene: 没有匹配的场景文件:', sceneName);
+            } catch (e) { console.warn('[IndexTTS2][Ambient] 加载场景音错误:', e); }
             return null;
         }
+
         async function playScene(sceneName) {
             if (!sceneName) { stop(); return; }
-            if (sceneName === currentScene && currentAudio && !currentAudio.paused) return;
+            // 如果场景相同且正在播放，直接保持，不重新加载
+            if (sceneName === currentScene && currentAudio && !currentAudio.paused) {
+                console.log('[IndexTTS2][Ambient] playScene: 同场景，保持播放:', sceneName);
+                return;
+            }
+
+            const requestId = ++playSceneRequestId;
             const url = await _loadScene(sceneName);
-            if (!url) { console.log('[IndexTTS2][Ambient] no file for scene:', sceneName); return; }
+
+            if (requestId !== playSceneRequestId) {
+                console.log('[IndexTTS2][Ambient] playScene: 请求已过期，放弃:', sceneName);
+                return;
+            }
+            if (!url) { console.log('[IndexTTS2][Ambient] 没有场景文件:', sceneName); return; }
+
             const oldAudio = currentAudio;
             currentScene = sceneName;
             const audio = new Audio(url);
             audio.loop = true;
             audio.volume = 0;
             currentAudio = audio;
+
             if (oldAudio && !oldAudio.paused) { _fadeOut(oldAudio, null); } else { _cancelFade(); }
             try {
-                console.log('[IndexTTS2][Ambient] playScene: calling audio.play() for scene:', sceneName);
+                console.log('[IndexTTS2][Ambient] playScene: 为场景调用 audio.play():', sceneName);
                 await audio.play();
-                console.log('[IndexTTS2][Ambient] playScene: audio.play() succeeded');
-                _fadeIn(audio);
+                if (currentAudio === audio) {
+                    console.log('[IndexTTS2][Ambient] playScene: audio.play() 成功');
+                    _fadeIn(audio);
+                }
             } catch (e) {
-                console.warn('[IndexTTS2][Ambient] play error:', e);
-                currentAudio = null; currentScene = null; URL.revokeObjectURL(url);
+                console.warn('[IndexTTS2][Ambient] 播放错误:', e);
+                if (currentAudio === audio) {
+                    currentAudio = null;
+                    currentScene = null;
+                }
             }
         }
-        function stop() { currentScene = null; if (currentAudio) { _fadeOut(currentAudio, null); currentAudio = null; } }
-        function stopImmediate() { _cancelFade(); currentScene = null; if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; } }
+
+        function stop() {
+            playSceneRequestId++;
+            currentScene = null;
+            if (currentAudio) { _fadeOut(currentAudio, null); currentAudio = null; }
+        }
+        function stopImmediate() {
+            playSceneRequestId++;
+            _cancelFade();
+            currentScene = null;
+            if (currentAudio) { currentAudio.pause(); currentAudio.src = ''; currentAudio = null; }
+        }
         function setVolume(vol) {
             const v = Math.max(0, Math.min(1, parseFloat(vol) || 0));
             const s = getSettings(); s.ambientSoundVolume = v; saveSettings();
             if (currentAudio && !currentAudio.paused) { _cancelFade(); currentAudio.volume = v; }
         }
         function getVolume() { return _getVolume(); }
-        return { init, setDirHandle, getDirHandle, requestPermission, playScene, stop, stopImmediate, setVolume, getVolume };
+        return { init, preloadScenes, setDirHandle, getDirHandle, requestPermission, playScene, stop, stopImmediate, setVolume, getVolume };
     })();
 
     async function generateHash(character, voiceId, text, speed, volume, emotion) {
@@ -660,14 +729,25 @@
                 }
             }
         } else {
-            // 单角色/GAL模式：从DOM解析
-            document.querySelectorAll('.mes[is_user="false"] .mes_text').forEach(mesText => {
-                (mesText.innerText || '').split('\n').forEach(line => {
-                    const parsed = parseVNLine(line.trim());
-                    if (parsed?.character && !['旁白', 'Narrator'].includes(parsed.character)) {
-                        characters.add(parsed.character);
-                    }
-                });
+            // 单角色/GAL模式：优先从底层聊天记录(chat数组)提取原始文本，绕过表层正则隐藏
+            const chatArray = ctx?.chat || [];
+            document.querySelectorAll('.mes[is_user="false"]').forEach(msgEl => {
+                let mesIdAttr = msgEl.getAttribute('mesid') || msgEl.dataset?.mesid || msgEl.getAttribute('data-mesid');
+                let rawText = '';
+                if (mesIdAttr && chatArray[parseInt(mesIdAttr)]) {
+                    rawText = chatArray[parseInt(mesIdAttr)].mes || '';
+                } else {
+                    const mesText = msgEl.querySelector('.mes_text');
+                    if (mesText) rawText = mesText.innerText || '';
+                }
+                if (rawText) {
+                    rawText.split('\n').forEach(line => {
+                        const parsed = parseVNLine(line.trim());
+                        if (parsed?.character && !['旁白', 'Narrator'].includes(parsed.character)) {
+                            characters.add(parsed.character);
+                        }
+                    });
+                }
             });
         }
         // 加上已绑定的角色
@@ -706,7 +786,7 @@
         if (settings.parsingMode === 'audiobook' && !(settings.regexFilter?.enabled)) {
             console.log('[IndexTTS2] ===== 听书模式内置硬过滤开始 =====');
             console.log('[IndexTTS2] 原始文本:', JSON.stringify(originalText));
-            // 2.1 保护加粗内容
+            // 2.1 保护加粗内容（用占位符）
             const boldMap = new Map();
             let boldIndex = 0;
             processedText = processedText.replace(/\*\*([^*]+)\*\*/g, (match, content) => {
@@ -747,14 +827,26 @@
                 }
             });
 
-            // 2.4 还原加粗内容
+            // 2.4 还原加粗内容（先还原，再删符号，确保加粗内的引号/括号也被清理）
             boldMap.forEach((content, placeholder) => {
                 processedText = processedText.split(placeholder).join(content);
             });
             console.log('[IndexTTS2] 加粗还原完成');
 
-            // 2.5 清理多余空白，但保留换行符以供后续分段使用
-            processedText = processedText.replace(/[ \t]+/g, ' ').replace(/\n{2,}/g, '\n').trim();
+            // 2.5 替换破折号为逗号
+            processedText = processedText.replace(/—+/g, '，');
+
+            // 2.6 仅删除特定标点符号，保留内部文字
+            const symbolOnlyRegex = /["“”‘’「」『』\[\]【】{}|]/g;
+            processedText = processedText.replace(symbolOnlyRegex, '');
+
+            // 2.7 清理多余空白，并消除中文之间的空格，保留换行符以供后续分段使用
+            processedText = processedText
+                .replace(/[ \t]+/g, ' ')          // 合并水平空白
+                .replace(/([\u4e00-\u9fa5，。！？、；：])\s+(?=[\u4e00-\u9fa5，。！？、；：])/g, '$1') // 去除中文及中文标点之间的空格
+                .replace(/\n{2,}/g, '\n')          // 合并多余换行
+                .trim();
+
         } else {
             // GAL/RP 模式：只清理水平空白，保留格式符号和换行结构
             processedText = processedText.replace(/[ \t]+/g, ' ').trim();
@@ -890,7 +982,7 @@
         const audio = new Audio(blobUrl);
         const settings = getSettings();
         let vol = isNaN(volume) ? (settings.volume || 1.0) : volume;
-        vol = Math.max(0, Math.min(1.0, vol));// 限制在 0 ~ 1.0 之间，防止 HTMLMediaElement 报错
+        vol = Math.max(0, Math.min(1.0, vol));// 强制限制在 0 ~ 1.0 之间，防止 HTMLMediaElement 报错
         audio.volume = vol;
         if (msg) { clearPlayingInMessage(msg); setLinePlayingByEncoded(msg, encT, encC, true); }
         if (currentPlayback.audio) { try { currentPlayback.audio.pause(); } catch (e) { } }
@@ -1217,17 +1309,25 @@
 
         const voiceMap = getVoiceMap();
         
-        // GAL 模式：保留原生换行结构提取，避免破坏 [角色] 格式解析
+        // GAL 模式：优先读取底层原始数据,保留换行结构提取
         let textContent = '';
-        try {
-            const clone = mesText.cloneNode(true);
-            clone.querySelectorAll('.indextts-inline-play, .indextts-dialogue').forEach(el => {
-                if (el.classList.contains('indextts-dialogue')) el.replaceWith(...el.childNodes);
-                else el.remove();
-            });
-            textContent = clone.innerText || '';
-        } catch (e) {
-            textContent = mesText.innerText || '';
+        const mesIdForBtn = getMessageId(msg);
+        const ctxForBtn = getContext();
+        const messageDataForBtn = mesIdForBtn ? ctxForBtn?.chat?.[parseInt(mesIdForBtn)] : null;
+        if (messageDataForBtn && messageDataForBtn.mes) {
+            textContent = messageDataForBtn.mes;
+        } else {
+            // 如果底层不可用，则从 DOM 提取
+            try {
+                const clone = mesText.cloneNode(true);
+                clone.querySelectorAll('.indextts-inline-play, .indextts-dialogue').forEach(el => {
+                    if (el.classList.contains('indextts-dialogue')) el.replaceWith(...el.childNodes);
+                    else el.remove();
+                });
+                textContent = clone.innerText || '';
+            } catch (e) {
+                textContent = mesText.innerText || '';
+            }
         }
 
         const lines = textContent.split('\n');
@@ -1304,10 +1404,14 @@
         if (!msg) return result;
         const mesText = msg.querySelector('.mes_text');
         if (!mesText) return result;
-
         const voiceMap = getVoiceMap();
         const settings = getSettings();
         const mode = settings.parsingMode || 'gal';
+
+        // 提前获取底层原始数据，以供 GAL/RP 模式使用
+        const mesId = getMessageId(msg);
+        const ctx = getContext();
+        const messageData = mesId ? ctx?.chat?.[parseInt(mesId)] : null;
 
         // 1. 文本提取路径分离
         let textContent = '';
@@ -1315,16 +1419,21 @@
             // 听书模式：使用 HTML 转 MD，捕捉所有符号，但保留换行符
             textContent = htmlToMarkdown(mesText.innerHTML);
         } else {
-            // GAL/RP 模式：使用 innerText 保留原生换行结构
-            try {
-                const clone = mesText.cloneNode(true);
-                clone.querySelectorAll('.indextts-inline-play, .indextts-dialogue').forEach(el => {
-                    if (el.classList.contains('indextts-dialogue')) el.replaceWith(...el.childNodes);
-                    else el.remove();
-                });
-                textContent = clone.innerText || '';
-            } catch (e) {
-                textContent = mesText.innerText || '';
+            // GAL/RP 模式：优先读取底层原始数据(messageData.mes)
+            if (messageData && messageData.mes) {
+                textContent = messageData.mes;
+            } else {
+                // Fallback: 如果底层不可用，则从 DOM 提取
+                try {
+                    const clone = mesText.cloneNode(true);
+                    clone.querySelectorAll('.indextts-inline-play, .indextts-dialogue').forEach(el => {
+                        if (el.classList.contains('indextts-dialogue')) el.replaceWith(...el.childNodes);
+                        else el.remove();
+                    });
+                    textContent = clone.innerText || '';
+                } catch (e) {
+                    textContent = mesText.innerText || '';
+                }
             }
         }
 
@@ -1332,9 +1441,6 @@
         textContent = textContent.replace(/\r/g, '\n');
 
         // 2. 角色路由判定（底层逻辑）
-        const mesId = getMessageId(msg);
-        const ctx = getContext();
-        const messageData = mesId ? ctx?.chat?.[parseInt(mesId)] : null;
         const isGroupChat = !!ctx?.groupId;
         let speakerName, speakerVoice;
 
@@ -1369,7 +1475,7 @@
                 // 无引号，整句朗读
                 result.push({ text: textContent.trim(), character: speakerName, voice: speakerVoice, emotion: null, scene: null });
             }
-            return splitResult(result); // 支持伪流式分段
+            return result; 
         }
 
         if (mode === 'audiobook') {
@@ -1387,7 +1493,7 @@
                 result.push({ text: trimmed, character: speakerName, voice: speakerVoice, emotion: null, scene: null });
             }
             
-            return result; 
+            return result; // GAL 模式不分段
         }
 
         // GAL 格式解析
@@ -1417,7 +1523,7 @@
                 result.push({ text: trimmed, character: speakerName, voice: speakerVoice, emotion: null, scene: null });
             }
         }
-        return result; 
+        return result; // GAL 模式不分段
     }
 
     /**
@@ -1428,7 +1534,7 @@
         if (result.length !== 1) return result;
         const settings = getSettings();
         const mode = settings.parsingMode || 'gal';
-        // GAL 模式不分段
+        // GAL 模式不分段（虽然理论上不会走到这里，作为双保险保留）
         if (mode === 'gal') return result;
 
         const originalText = result[0].text;
@@ -1464,8 +1570,11 @@
 
         // 粗略过滤：用于判断是否分段（基于 protectedText，占位符很短）
         let roughText = protectedText
-            .replace(/^[\*\-\+]\s+/gm, '') // 列表符号
-            .replace(/^#{1,6}\s+/gm, '') // Markdown标题
+            .replace(/^[\*\-\+]\s+/gm, '')
+            .replace(/^#{1,6}\s+/gm, '')
+            .replace(/["“”‘’「」『』\[\]【】{}|]/g, '')
+            .replace(/—+/g, '，') 
+            .replace(/([\u4e00-\u9fa5，。！？、；：])\s+(?=[\u4e00-\u9fa5，。！？、；：])/g, '$1')
             .trim();
 
         // 用粗略过滤后的字数判断是否分段
@@ -1835,7 +1944,7 @@
                 container.style.left = dragInfo.initialLeft + 'px';
                 container.style.top = dragInfo.initialTop + 'px';
                 container.style.bottom = 'auto';
-                container.style.right = 'auto'; // 清除右侧定位，防止拖动后回弹
+                container.style.right = 'auto';
             });
             document.addEventListener('mousemove', (e) => {
                 if (!dragInfo.isDragging) return;
@@ -1982,12 +2091,17 @@
             const waitForContent = () => {
                 return new Promise(resolve => {
                     const checkInterval = setInterval(() => {
-                        if (currentPlayIndex < list.length) { clearInterval(checkInterval); resolve(); }
+                        if (currentPlayback.sessionId !== sessionId) { clearInterval(checkInterval); resolve('aborted'); }
+                        else if (currentPlayIndex < list.length) { clearInterval(checkInterval); resolve(); }
                         else if (inferDone) { clearInterval(checkInterval); resolve('done'); }
                     }, 50);
                 });
             };
             const waitResult = await waitForContent();
+            if (waitResult === 'aborted') {
+                console.log('[IndexTTS2] Streaming: 由于会话更改，播放已中止');
+                return;
+            }
             if (waitResult === 'done' || currentPlayIndex >= list.length) {
                 console.log('[IndexTTS2] Streaming: playback finished');
                 AmbientPlayer.stop();
@@ -1995,6 +2109,7 @@
                 clearPlayingInMessage(msg);
                 return;
             }
+
             const item = list[currentPlayIndex];
             if (!item) {
                 console.warn('[IndexTTS2] Streaming: invalid item at index', currentPlayIndex);
@@ -2024,7 +2139,6 @@
             AmbientPlayer.playScene(item.scene || null);
             currentAudio.onended = () => {
                 setLinePlayingByEncoded(msg, encT, encC, false);
-                if (currentPlayIndex + 1 < list.length) { AmbientPlayer.stopImmediate(); } else { AmbientPlayer.stop(); }
                 
                 const settings = getSettings();
                 const delaySec = settings.parsingMode === 'rp' ? parseFloat(settings.rpSentenceDelay) : NaN;
@@ -2037,14 +2151,16 @@
                         }
                     }, delaySec * 1000);
                 } else {
-                    currentPlayIndex++;
-                    playNextAudio();
+                    if (currentPlayback.sessionId === mySessionId) {
+                        currentPlayIndex++;
+                        playNextAudio();
+                    }    
                 }
             };
             currentAudio.onerror = () => {
                 console.error('[IndexTTS2] Streaming track error at index:', currentPlayIndex);
                 setLinePlayingByEncoded(msg, encT, encC, false);
-                AmbientPlayer.stopImmediate();
+
                 currentPlayIndex++; playNextAudio();
             };
             try { await currentAudio.play(); } catch (e) {
@@ -2110,6 +2226,7 @@
                     playNextAudio();
                 }
             }
+            inferDone = true;
         };
         inferLoop();
         return list;
@@ -2368,6 +2485,116 @@
         });
     }
 
+    // ==================== Update Checker ====================
+    const UPDATE_CHECKER = (() => {
+        const REMOTE_MANIFEST_URL = "https://raw.githubusercontent.com/Thirteen-Moons/ST-indexTTS2-X-Player/main/manifest.json";
+        const CHECK_INTERVAL_HOURS = 24;
+        let hasUpdate = false;
+        let remoteVersion = null;
+        let currentVersion = null;
+
+        async function getCurrentVersion() {
+            // 从本地 manifest.json 读取版本号
+            if (currentVersion) return currentVersion;
+            try {
+                const response = await fetch(`${extensionFolderPath}manifest.json`, { cache: 'no-cache' });
+                if (response.ok) {
+                    const data = await response.json();
+                    currentVersion = data.version || '1.0.0';
+                }
+            } catch (e) {
+                currentVersion = '1.0.0';
+            }
+            return currentVersion;
+        }
+
+        async function checkUpdate() {
+            try {
+                const lastCheck = localStorage.getItem('indextts_last_update_check');
+                const now = Date.now();
+                if (lastCheck && (now - parseInt(lastCheck)) < CHECK_INTERVAL_HOURS * 3600 * 1000) {
+                    const cachedResult = localStorage.getItem('indextts_update_available');
+                    if (cachedResult === 'true') {
+                        hasUpdate = true;
+                        remoteVersion = localStorage.getItem('indextts_remote_version');
+                        updateUI();
+                    }
+                    return;
+                }
+
+                const [localVer, response] = await Promise.all([
+                    getCurrentVersion(),
+                    fetch(REMOTE_MANIFEST_URL, { method: 'GET', cache: 'no-cache' })
+                ]);
+                
+                if (!response.ok) return;
+                const data = await response.json();
+                if (!data.version) return;
+                
+                remoteVersion = data.version;
+                localStorage.setItem('indextts_last_update_check', String(now));
+                localStorage.setItem('indextts_remote_version', remoteVersion);
+
+                const currentParts = localVer.split('.').map(Number);
+                const remoteParts = remoteVersion.split('.').map(Number);
+                
+                let isNewer = false;
+                const maxLen = Math.max(currentParts.length, remoteParts.length);
+                for (let i = 0; i < maxLen; i++) {
+                    const c = currentParts[i] || 0;
+                    const r = remoteParts[i] || 0;
+                    if (r > c) { isNewer = true; break; }
+                    if (r < c) { break; }
+                }
+                
+                hasUpdate = isNewer;
+                localStorage.setItem('indextts_update_available', String(hasUpdate));
+
+                if (hasUpdate) {
+                    console.log('[IndexTTS2] 发现新版本:', remoteVersion, '当前:', localVer);
+                    updateUI();
+                }
+            } catch (e) {
+                console.warn('[IndexTTS2] 更新检查失败:', e);
+            }
+        }
+
+        function updateUI() {
+            if (!hasUpdate) return;
+            const drawerToggle = document.querySelector('#indextts-settings .inline-drawer-toggle');
+            if (drawerToggle && !drawerToggle.querySelector('.indextts-update-badge')) {
+                const badge = document.createElement('span');
+                badge.className = 'indextts-update-badge';
+                badge.textContent = 'New!';
+                badge.title = `有新版本 ${remoteVersion} 可用，请在扩展设置中点击更新`;
+                badge.style.cssText = `
+                    display: inline-block;
+                    margin-left: 8px;
+                    padding: 1px 6px;
+                    background: #ff4444;
+                    color: #fff;
+                    font-size: 11px;
+                    font-weight: bold;
+                    border-radius: 3px;
+                    vertical-align: middle;
+                    animation: indextts-blink 1.5s ease-in-out infinite;
+                `;
+                // 仅提示
+                const titleB = drawerToggle.querySelector('b');
+                if (titleB) {
+                    titleB.insertAdjacentElement('afterend', badge);
+                } else {
+                    drawerToggle.appendChild(badge);
+                }
+            }
+        }
+
+        function scheduleCheck() {
+            setTimeout(checkUpdate, 5000);
+        }
+
+        return { checkUpdate, scheduleCheck, hasUpdate: () => hasUpdate };
+    })();   
     // ==================== Settings Panel ====================
     function injectSettingsPanel() {
         if (document.getElementById('indextts-settings')) {
@@ -2459,7 +2686,7 @@
                         <!-- 模块4：背景音效 -->
                         <div class="indextts-setting-module">
                             <div class="indextts-module-header">🎵 场景音效</div>
-                            <div class="indextts-path-container"><input type="text" id="indextts-ambient-path" class="indextts-path-display" value="" readonly placeholder="未选择背景音目录"><button class="menu_button" id="indextts-ambient-choose" title="选择背景音文件夹">📂 选择</button><button class="menu_button" id="indextts-ambient-auth" title="重新授权目录读取权限" style="display:none;">🔄 授权</button></div>
+                            <div class="indextts-setting-row" style="font-size:0.85em; opacity:0.7;">请在TTS后端pjy目录放置场景音频，确保文件名与标签名一致。</div>
                             <div class="indextts-setting-row"><label>场景音音量</label><input type="range" id="indextts-ambient-volume" class="indextts-slider" min="0" max="1" step="0.05" value="${settings.ambientSoundVolume ?? 0.4}"><span id="indextts-ambient-volume-val">${((settings.ambientSoundVolume ?? 0.4) * 100).toFixed(0)}%</span></div>
                             <div class="indextts-setting-row"><label>淡入淡出</label><select id="indextts-ambient-fade" class="text_pole"><option value="0"${(settings.ambientFadeDuration ?? 0) == 0 ? ' selected' : ''}>关闭</option><option value="500"${(settings.ambientFadeDuration ?? 0) == 500 ? ' selected' : ''}>0.5 秒</option><option value="1000"${(settings.ambientFadeDuration ?? 0) == 1000 ? ' selected' : ''}>1 秒</option><option value="1500"${(settings.ambientFadeDuration ?? 0) == 1500 ? ' selected' : ''}>1.5 秒</option><option value="2000"${(settings.ambientFadeDuration ?? 0) == 2000 ? ' selected' : ''}>2 秒</option><option value="3000"${(settings.ambientFadeDuration ?? 0) == 3000 ? ' selected' : ''}>3 秒</option></select></div>
                             <div class="indextts-setting-row" style="font-size:0.85em; opacity:0.7;">音效文件命名需与场景名称一致，支持 .mp3 / .wav / .ogg / .m4a</div>
@@ -2740,6 +2967,9 @@
             };
         }
         updatePathUI(); updateAudioPoolStats();
+
+        // 预加载场景音列表，防止首次播放时异步延迟导致丢失
+        AmbientPlayer.preloadScenes();
     }
 
     async function updateAudioPoolStats() {
@@ -2951,6 +3181,7 @@
         setInterval(polling, 2000);
         polling();
         console.log('[IndexTTS2] v12 Ready - Stable Edition');
+        UPDATE_CHECKER.scheduleCheck();//检查更新
         setTimeout(async () => {
             try {
                 const list = await AudioStorage.getAllAudios();

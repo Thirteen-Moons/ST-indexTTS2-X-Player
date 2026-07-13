@@ -2570,14 +2570,10 @@
                 badge.style.cssText = `
                     display: inline-block;
                     margin-left: 8px;
-                    padding: 1px 6px;
-                    background: #ff4444;
-                    color: #fff;
-                    font-size: 11px;
-                    font-weight: bold;
-                    border-radius: 3px;
+                    color: #ff4444;
+                    font-size: 14px;
+                    font-weight: normal;
                     vertical-align: middle;
-                    animation: indextts-blink 1.5s ease-in-out infinite;
                 `;
                 // 仅提示
                 const titleB = drawerToggle.querySelector('b');

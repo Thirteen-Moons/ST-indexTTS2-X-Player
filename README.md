@@ -6,7 +6,7 @@
 
 基于原始插件 [indexTTS player](https://github.com/bronie-honkai/st-indextts2) 的二次修改 [st-indextts2-plus](https://github.com/xiaoxiongweihu/st-indextts2-plus)，再次进行开发与优化，让你的SillyTavern语音体验更加流畅。
 
-版本：1.0.0 | 作者：Thirteen-Moons
+版本：1.1.1 | 作者：Thirteen-Moons
 
 ---
 ## 💡适用人群
@@ -125,11 +125,11 @@
    https://tcnlo9s668u9.feishu.cn/wiki/KRQ9wuqiViSOmJkfHxacNFfknjh
    ```
 
-  
-3. 启动 IndexTTS2 后端语音模型服务，路径project/IndexTTS/nvidia/api.bat
+3. 使用本仓库中的 **api.py** ，覆盖掉后端目录下的api.py，路径project\IndexTTS\nvidia\api
+4. 启动 IndexTTS2 后端语音模型服务，路径project/IndexTTS/nvidia/api.bat
    > * 注意：推理与输出速度取决于个人显卡性能，显卡越强，速度越快。
 
-4. 在 SillyTavern 扩展面板中启用 **IndexTTS2 Player**
+5. 在 SillyTavern 扩展面板中启用 **IndexTTS2 Player**
    <br><br>
   ---
 ### 🚀 快速配置
@@ -137,7 +137,6 @@
 
 1. API地址：保持默认即可。若需使用情感向量，则将 *TTS服务地址* 改为 `http://127.0.0.1:7880/api/v1/tts/tasks`
     > * 若PC端播放正常，但手机局域网播放报错，或不出声，则将三个地址的 127.0.0.1 改为本地ipv4地址。
-    > * 若照上述修改后还播不出，则打开后端的api.py文件，查找127，将监听地址改为0.0.0.0。
 <br>
 
 2. 在后端语音模型服务的文件夹中，添加参考音频。
@@ -336,7 +335,32 @@
 ---
 ## 📄 许可
 
-    SEE LICENSE
+  SEE LICENSE
+  
 ---
 
 🤝 欢迎使用ST-indexTTS2-X-Player。
+
+---
+# 🖊更新日志
+## v1.1.1
+### 修复
+- 移动端配置配置面板显示拥挤的问题。
+- GAL模式实时生成角色语音时，场景音每句从头播放的问题。现同一条消息内同一场景下，**场景音为延续播放**。
+
+### 优化
+- 现场景音也可在移动端播放。
+- 再次优化内置硬过滤，听书模式文本更干净。
+- GAL模式方括号标签，现可用正则”仅作用于显示“来隐藏，不会影响标签匹配。
+- 现同一条消息内不同角色可配置不同场景音，轮到下一个角色说话时，场景音随之变换，不会混乱。
+如：
+```
+[小明][平静][浴室]……
+[小红][开心][广场]……
+```
+- 更改场景音提取逻辑，加载更快速。
+
+### 新增
+- 更新检查：扩展面板显示"New!"提示，有新版本时自动提醒。
+  
+---

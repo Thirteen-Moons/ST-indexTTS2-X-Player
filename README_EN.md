@@ -124,7 +124,7 @@ Version: 1.1.1 | Author: Thirteen-Moons
 <br><br>
 2. Add reference audio in the backend voice model folder.
    - Place character reference audio files in the backend `api/ckpt/` directory (create if it doesn't exist). The dropdown will automatically list all available files.
-   - Place scene audio files in the backend `api/pjy/` directory (create if it doesn't exist). You must click "Authorize" after each SillyTavern restart for this to take effect. Scene audio is only available in GAL mode, and filenames must match the tag names.
+   - Place scene audio files in the backend `api/pjy/` directory (create if it doesn't exist). Scene audio is only available in GAL mode, and filenames must match the tag names.
    - Note: Reference audio should ideally be 10-20 seconds long, containing declarative sentences, interjections, questions, and laughter for best results. Actual voice quality depends on the reference audio quality.
 <br><br>
 3. Click the ⚙ button next to the AI message you want to voice. Open the voice config panel, enter the character name, save, then select the desired voice from the dropdown to bind.
@@ -154,8 +154,7 @@ Version: 1.1.1 | Author: Thirteen-Moons
 | Default Voice | Reference audio used when no character is configured |
 | Default Speed | Adjust speech speed |
 | Global Volume | Adjust speech volume |
-| Reference Audio & Cache Management | Set reference audio folder path |
-| Scene Sound Effects | Set your scene audio folder path |
+| Reference Audio & Cache Management | Discarded, no need to set, will be fetched automatically |
 | Scene Audio Volume | Adjust scene audio volume |
 | Fade In / Fade Out | Adjust scene audio fade duration |
 | Loop Scene Audio in Same Scene | Enable to loop scene audio within the same scene |

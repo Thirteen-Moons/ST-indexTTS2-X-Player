@@ -154,7 +154,7 @@ Version: 1.1.1 | Author: Thirteen-Moons
 | Default Voice | Reference audio used when no character is configured |
 | Default Speed | Adjust speech speed |
 | Global Volume | Adjust speech volume |
-| Reference Audio & Cache Management | Discarded, no need to set, will be fetched automatically |
+| Reference Audio & Cache Management | no need to set, will be fetched automatically |
 | Scene Audio Volume | Adjust scene audio volume |
 | Fade In / Fade Out | Adjust scene audio fade duration |
 | Loop Scene Audio in Same Scene | Enable to loop scene audio within the same scene |

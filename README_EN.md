@@ -274,6 +274,9 @@ If you need emotion vectors and scene audio, you must include `[Emotion]` and `[
 [Character][Emotion]「Dialogue」
 
 [Character]「Dialogue」
+
+
+If you don't like seeing square bracket tags, you can use the regular expression /[[^]]*]/g to replace them, select 'Apply to AI output, only affects display' to perform superficial hiding.
 ```
 
 <small>*GAL mode must have prompt injection enabled to guide the AI to consistently use the format above.*</small>
@@ -292,7 +295,7 @@ The name of the currently speaking character.
 
 ### Emotion:
 Choose only one that fits the current situation from the following:
-Happy, angry, sad, scared, disgusted, gloomy, surprised, calm
+Happy, angry, sad, scared, disgusted, gloomy, surprised, calm, If there is no particularly matching emotion, use 'usual'
 
 ### Dialogue Content:
 Wrap the character's spoken lines in 「」 or "".
@@ -309,8 +312,6 @@ Bed Squeaking, Bathroom Sex Sounds, Female Soft Moans, Male Panting
 [Xiao Ming][Happy][Spring Park]「The weather is so nice today.」
 He strolled leisurely through the park, watching the people passing by.
 
-[Xiao Fang][Surprised]「Huh?? What did you just say?」
-He turned his head in shock, as if he couldn't believe what he'd heard.
 ```
 
 <small>*Note: Scene names should match your background audio files. For example, if your scene audio file is `Park.mp3`, then the `[Scene]` tag in the prompt must be the word "Park".*</small>

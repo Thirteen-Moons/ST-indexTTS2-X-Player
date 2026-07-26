@@ -4,7 +4,7 @@ A text-to-speech (TTS) extension designed for SillyTavern.
 
 Built upon the original [indexTTS player](https://github.com/bronie-honkai/st-indextts2) and its second iteration [st-indextts2-plus](https://github.com/xiaoxiongweihu/st-indextts2-plus), this third iteration brings further development and optimization for a smoother SillyTavern voice experience.
 
-Version: 1.1.1 | Author: Thirteen-Moons
+Version: 1.2.0 | Author: Thirteen-Moons
 
 ---
 
@@ -36,7 +36,7 @@ Version: 1.1.1 | Author: Thirteen-Moons
 <br><br>
 ### 💓 Emotion Vectors
 
-- Supports 8-dimensional emotion vectors for more expressive and emotionally rich speech synthesis.
+- Supports 25-dimensional emotion vectors for more expressive and emotionally rich speech synthesis.
 <br><br>
 ### 🖱️ Floating Player
 
@@ -232,10 +232,10 @@ The train should arrive in ten minutes.
 
 ```
 [Original 1]:
-[Da Liu][Happy]「Haha, I actually won the lottery today!」
+[Da Liu][开心]「Haha, I actually won the lottery today!」
 Excitedly waving the lottery ticket in his hand, grinning until his eyes were slits.
 
-[Xiao Li][Sarcastic]「Look at you, careful you don't jinx it.」
+[Xiao Li][讽刺]「Look at you, careful you don't jinx it.」
 He said disdainfully, though his eyes kept darting toward the lottery ticket in Da Liu's hand.
 
 [Spoken]:
@@ -247,7 +247,7 @@ Look at you, careful you don't jinx it.
 
 
 [Original 2]:
-[Xiao Bo][Excited][Summer Park]"Hey, look at that cloud over there, it really looks like a cat."
+[Xiao Bo][兴奋][Summer Park]"Hey, look at that cloud over there, it really looks like a cat."
 A child excitedly pointed at the sky, his voice crisp and sweet.
 
 [Spoken]:
@@ -294,8 +294,16 @@ If you don't like seeing square bracket tags, you can use the regular expression
 The name of the currently speaking character.
 
 ### Emotion:
-Choose only one that fits the current situation from the following:
-Happy, angry, sad, scared, disgusted, gloomy, surprised, calm, If there is no particularly matching emotion, use 'usual'
+Choose only one that fits the current situation from the following，If there is no particularly matching emotion, use '通常'
+- 温暖柔和类、温柔、宠溺、怀念
+- 喜悦类：开心、喜极而泣、哭笑不得、惊喜
+- 羞涩：害羞
+- 愤怒类：生气、羞愤、烦躁
+- 悲伤类：淡淡的忧伤、心酸、强忍难过、悲伤、低落
+- 恐惧与紧张类：紧张、害怕、慌乱
+- 厌恶类：嫌弃、厌恶、恨之入骨
+- 惊讶类：略感意外、惊讶
+- 其他类型：平静、通常
 
 ### Dialogue Content:
 Wrap the character's spoken lines in 「」 or "".
@@ -309,12 +317,12 @@ Bed Squeaking, Bathroom Sex Sounds, Female Soft Moans, Male Panting
 
 ## Format Example:
 
-[Xiao Ming][Happy][Spring Park]「The weather is so nice today.」
+[Xiao Ming][开心][Spring Park]「The weather is so nice today.」
 He strolled leisurely through the park, watching the people passing by.
 
 ```
 
-<small>*Note: Scene names should match your background audio files. For example, if your scene audio file is `Park.mp3`, then the `[Scene]` tag in the prompt must be the word "Park".*</small>
+<small>*Note: Scene names should match your background audio files. For example, if your scene audio file is `Park.mp3`, then the `[Scene]` tag in the prompt must be the word "Park".Please use the above prompts directly for other parts, the Chinese emotion labels cannot be changed.*</small>
 
 <br>
 
@@ -337,6 +345,14 @@ He strolled leisurely through the park, watching the people passing by.
 7. Place the finished audio file into the reference audio **ckyp** directory.
 
 The same process applies to scene audio.
+<br>
+
+### ❗Note: 
+
+The quality of the reference audio is crucial. If the reference audio itself has a 'tsundere' tone, then even without using the GAL mode or injecting emotion tags through formatting, the speech will inherently carry a tsundere tone. 
+Conversely, if the reference audio is in a robotic broadcasting style, then even with emotion tags, it is difficult to generate a natural effect. 
+
+The same emotion tag will have a vastly different effect when applied to naturally expressive, emotional reference audio compared to rigid, lifeless audio.
 
 ---
 
@@ -365,12 +381,15 @@ See [LICENSE](./LICENSE).
 
   Example:
   ```
-  [Xiao Ming][Calm][Bathroom]...
-  [Xiao Hong][Happy][Plaza]...
+  [Xiao Ming][悲伤][Bathroom]...
+  [Xiao Hong][开心][Plaza]...
   ```
 - Reworked scene audio extraction logic for faster loading.
 
 ### New Features
 - Update Checker: The extension panel now displays a "New!" badge when a newer version is available.
+
+### v1.2.0
+- Added multiple emotion mappings, making voice emotions richer
 
 ---

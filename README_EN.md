@@ -295,15 +295,15 @@ The name of the currently speaking character.
 
 ### Emotion:
 Choose only one that fits the current situation from the following，If there is no particularly matching emotion, use '通常'
-- 温暖柔和类、温柔、宠溺、怀念
-- 喜悦类：开心、喜极而泣、哭笑不得、惊喜
-- 羞涩：害羞
-- 愤怒类：生气、羞愤、烦躁
-- 悲伤类：淡淡的忧伤、心酸、强忍难过、悲伤、低落
-- 恐惧与紧张类：紧张、害怕、慌乱
-- 厌恶类：嫌弃、厌恶、恨之入骨
-- 惊讶类：略感意外、惊讶
-- 其他类型：平静、通常
+- Warm and soft style：温柔、宠溺、怀念
+- Joyful type：开心、喜极而泣、哭笑不得、惊喜
+- Shy type：害羞
+- Type of anger：生气、羞愤、烦躁
+- Melancholic style：淡淡的忧伤、心酸、强忍难过、悲伤、低落
+- A style of fear and tension：紧张、害怕、慌乱
+- Repulsive style：嫌弃、厌恶、恨之入骨
+- Type of surprise：略感意外、惊讶
+- Other types：平静、通常
 
 ### Dialogue Content:
 Wrap the character's spoken lines in 「」 or "".

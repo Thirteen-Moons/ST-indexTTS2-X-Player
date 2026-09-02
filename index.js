@@ -1,6 +1,7 @@
 // Copyright (c) 2026 Thirteen-Moons
 // Licensed under AGPL-3.0; see LICENSE for full terms
 // Derivative works must retain attribution to Thirteen-Moons
+// v1.2.5
 
 (function () {
     const extensionName = "st-indextts2";
@@ -22,6 +23,7 @@
         streamingPlay: false,
         streamingSkipCount: 1,
         rpSentenceDelay: '', 
+        galSentenceDelay: '',
         showFloatingPlayer: true, 
         cacheImportPath: '\\\\SillyTavern\\\\data\\\\TTSsound',
         ambientSoundPath: '',
@@ -50,6 +52,7 @@
      */
     function htmlToMarkdown(html) {
         let text = html;
+        text = stripDecorativeBlocks(text);
         text = text.replace(/<br\s*\/?>/gi, '\n');
         text = text.replace(/<\/p>/gi, '\n');
         text = text.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n\n```\n$1\n```\n');
@@ -210,7 +213,7 @@
 
     // ==================== Global Audio Cache ====================
     const audioCache = {};
-    let currentPlayback = { audio: null, msg: null, mesId: null, index: -1, playlist: null, totalDuration: 0, controller: null };
+    let currentPlayback = { audio: null, msg: null, mesId: null, index: -1, playlist: null, totalDuration: 0, controller: null, stop: function () { if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } } this.audio = null; } };
     const inferenceLocks = new Set();
     let miniPlayerEl = null, miniPlayerProgress = null, miniPlayerToggle = null, miniPlayerSpeed = null, miniPlayerHideTimer = null, miniPlayerBoundAudio = null;
 
@@ -499,7 +502,12 @@
             audio.volume = 0;
             currentAudio = audio;
 
-            if (oldAudio && !oldAudio.paused) { _fadeOut(oldAudio, null); } else { _cancelFade(); }
+            if (oldAudio && !oldAudio.paused) {
+                _fadeOut(oldAudio, null);
+            } else {
+                _cancelFadeIn();
+            }
+
             try {
                 console.log('[IndexTTS2][Ambient] playScene: 为场景调用 audio.play():', sceneName);
                 await audio.play();
@@ -619,21 +627,23 @@
         厌恶: '0,0,0,0,1,0,0,0', 低落: '0,0,0,0,0,1,0,0', 惊讶: '0,0,0,0,0,0,0.72,0', 平静: '0,0,0,0,0,0,0,0.65',
 
         //温暖柔和类
-        温柔: '0.39,0,0,0,0,0.08,0,0.59', 宠溺: '0.48,0,0,0,0,0.08,0.09,0.45', 怀念: '0.3,0,0.3,0,0,0.1,0,0.35',
+        温柔: '0.39,0,0,0,0,0.08,0,0.59', 宠溺: '0.48,0,0,0,0,0.08,0.09,0.45', 欣慰: '0.5,0,0.1,0,0,0,0,0.65', 怀念: '0.3,0,0.3,0,0,0.1,0,0.35', 释然: '0.48,0,0,0,0,0.18,0,0.4', 
         // 喜悦类
-        喜极而泣: '0.8,0,0.57,0,0,0,0.14,0', 哭笑不得: '0.59,0,0.3,0,0,0,0.29,0', 惊喜: '0.7,0,0,0,0,0,0.6,0',  
+        喜极而泣: '0.8,0,0.57,0,0,0,0.14,0', 哭笑不得: '0.59,0,0.3,0,0,0,0.29,0', 惊喜: '0.7,0,0,0,0,0,0.6,0', 期待: '0.5,0,0,0,0,0,0.3,0', 小小的喜悦: '0.4,0,0,0,0,0,0,0', 
         //羞涩
-        害羞: '0.12,0,0,0.51,0,0,0,0.26',
+        傲娇: '0.24,0.16,0,0.52,0,0,0.08,0.02', 害羞: '0.12,0,0,0.51,0,0,0,0.26',
         //怒气类
-        羞愤: '0,0.68,0,0.6,0,0,0,0', 烦躁: '0,0.5,0,0,0.3,0,0,0.2', 
+        羞愤: '0,0.68,0,0.6,0,0,0,0', 烦躁: '0,0.5,0,0,0.3,0,0,0.2', 隐忍的愤怒: '0,0.65,0,0,0,0,0,0.7', 气急败坏: '0,1.08,0,0,0,0,0.1,0',
         // 悲伤
-        淡淡的忧伤: '0,0,0.4,0,0,0,0,0', 心酸: '0,0,0.57,0,0,0.53,0,0', 强忍难过: '0,0,0.6,0,0,0,0,0.6', 
+        淡淡的忧伤: '0,0,0.4,0,0,0,0,0', 心酸: '0,0,0.57,0,0,0.53,0,0', 心疼: '0,0,0.4,0.2,0,0.3,0.1,0', 强忍难过: '0,0,0.6,0,0,0,0,0.6', 悲痛欲绝: '0,0.01,1.15,0.015,0,0,0.01,0', 心如死灰: '0,0,0.05,0,0,1,0,0.1', 绝望: '0,0,0.4,0.5,0,0.6,0,0',
         // 恐惧与紧张变体
-        紧张: '0,0,0.05,0.5,0,0,0.15,0', 慌乱: '0,0,0,0.6,0,0,0.6,0', 
+        紧张: '0,0,0.05,0.5,0,0,0.15,0', 惶恐: '0,0,0,0.85,0,0,0.45,0', 慌乱: '0,0,0,0.6,0,0,0.6,0', 忧虑: '0,0,0,0.48,0,0.3,0.1,0', 期待又不安: '0.22,0,0,0.33,0,0.03,0,0.01', 害怕但强装镇定: '0,0,0,0.72,0,0,0,0.3',
         // 厌恶类
-        嫌弃: '0,0,0,0,0.5,0,0,0.02', 恨之入骨: '0,0.8,0,0,0.6,0,0,0',
+        傲慢: '0,0.3,0,0,0.5,0,0,0.6', 嫌弃: '0,0,0,0,0.5,0,0,0.02', 嫉妒: '0,0.3,0.25,0,0.35,0,0,0.07', 讽刺: '0.15,0.1,0,0,0.6,0,0,0.2', 恨之入骨: '0,0.8,0,0,0.6,0,0,0',
         // 惊讶
-        略感意外: '0,0,0,0,0,0,0.4,0', 
+        略感意外: '0,0,0,0,0,0,0.4,0', 大惊失色: '0,0,0,0.32,0,0,0.83,0',
+        // 复杂
+        无奈: '0,0,0.28,0,0,0,0,0.62', 尴尬: '0,0,0,0.5,0,0,0.45,0.2', 麻木: '0,0,0.1,0,0,0.5,0,0.6', 调侃: '0.5,0,0,0,0.17,0,0,0.1',
     };
     const textEmotionAliasMap = { 通常: '温柔' };
 
@@ -718,6 +728,45 @@
             return null;
         } catch (e) { console.error('[IndexTTS2] parseVNLine error:', e); }
         return null;
+    }
+
+    /**
+     * 剥离思考类标签（think/thinking/thought/summary/details）及其全部内容
+     * 兼容两种形式：<think>...</think> 和被HTML转义的 &lt;think&gt;...&lt;/think&gt;
+     */
+    function stripThinkBlocks(text) {
+        if (!text) return text;
+        const before = text;
+        // 原生形式
+        text = text.replace(/<(think|thinking|thought|summary|details)(\s[^>]*)?>[\s\S]*?<\/\1\s*>/gi, '');
+        // 转义实体形式
+        text = text.replace(/&lt;(think|thinking|thought|summary|details)(\s[^&>]*)?&gt;[\s\S]*?&lt;\/\1\s*&gt;/gi, '');
+        if (before !== text) {
+            console.log('[IndexTTS2] 思考标签块已剥离');
+        }
+        return text;
+    }
+    
+    /**
+     * 剥离"仅影响显示"正则产生的装饰性 HTML 块
+     * 特征：带 inline style 的 div/span，或非标准 HTML 标签（如 <status>）
+     * 注意：只删"装饰块"，不碰普通格式标签（<b>、<em> 等）
+     */
+    function stripDecorativeBlocks(html) {
+        if (!html) return html;
+        let text = html;
+        let prev;
+        // 循环处理嵌套标签，直到扫不干净为止
+        do {
+            prev = text;
+            // 1. 带 style 属性的 div/span → 整段删除（标签+内容一起删）;限制：只删带 style 的，避免误杀普通 div
+            text = text.replace(/<div\b[^>]*?\bstyle\s*=[^>]*?>[\s\S]*?<\/div\s*>/gi, ' ');
+            text = text.replace(/<span\b[^>]*?\bstyle\s*=[^>]*?>[\s\S]*?<\/span\s*>/gi, ' ');
+            // 2. 非标准 HTML 标签（如 <status>、<card>、<think-block> 等）→ 整段删除
+            const allowedTags = 'div|span|p|br|b|strong|em|i|u|s|del|ins|code|pre|font|mark|small|big|sub|sup|center|q|cite|h[1-6]|a|img|ul|ol|li|blockquote|table|tr|td|th|thead|tbody|hr';
+            text = text.replace(new RegExp(`<(?!/?(?:${allowedTags})\\b)[a-z][a-z0-9]*\\b[^>]*>[\\s\\S]*?</[a-z][a-z0-9]*\\s*>`, 'gi'), ' ');
+        } while (text !== prev);
+        return text;
     }
 
     /**
@@ -950,6 +999,7 @@
         const ctx = context || {};
         const allowFetch = ctx.autoInfer === false ? false : true;
         const emotion = ctx.emotion || null;
+        const scene = ctx.scene || null;
         let msg = ctx.msg || null;
         const encT = ctx.encT || utf8ToBase64(text);
         const encC = ctx.encC || utf8ToBase64(character || '');
@@ -982,7 +1032,7 @@
             const recordInCache = audioCache[mesId].find(r => r.text === cleanText);
             if (recordInCache && recordInCache.blobUrl) {
                 console.log('[IndexTTS2] Memory Cache Hit for playSingleLine:', mesId);
-                playAudioFromRecord({ blobUrl: recordInCache.blobUrl, msg, encT, encC, character, text: cleanText, volume: ctx.volume });
+                playAudioFromRecord({ blobUrl: recordInCache.blobUrl, msg, encT, encC, character, text: cleanText, volume: ctx.volume, scene });
                 return;
             }
         }
@@ -996,10 +1046,10 @@
             return;
         }
         const url = URL.createObjectURL(record.blob);
-        playAudioFromRecord({ blobUrl: url, msg, encT, encC, character, text, volume: record.volume, shouldRevoke: true });
+        playAudioFromRecord({ blobUrl: url, msg, encT, encC, character, text, volume: record.volume, shouldRevoke: true, scene });
     }
 
-    async function playAudioFromRecord({ blobUrl, msg, encT, encC, character, text, volume, shouldRevoke = false }) {
+    async function playAudioFromRecord({ blobUrl, msg, encT, encC, character, text, volume, shouldRevoke = false, scene = null }) {
         const audio = new Audio(blobUrl);
         const settings = getSettings();
         let vol = isNaN(volume) ? (settings.volume || 1.0) : volume;
@@ -1007,11 +1057,14 @@
         audio.volume = vol;
         if (msg) { clearPlayingInMessage(msg); setLinePlayingByEncoded(msg, encT, encC, true); }
         if (currentPlayback.audio) { try { currentPlayback.audio.pause(); } catch (e) { } }
-        currentPlayback = { audio, msg, mesId: msg ? getMessageId(msg) : null, index: -1, playlist: null, totalDuration: 0, controller: null };
+        currentPlayback = { audio, msg, mesId: msg ? getMessageId(msg) : null, index: -1, playlist: null, totalDuration: 0, controller: null, stop: function () { if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } } this.audio = null; } };
+
         attachMiniPlayerToAudio(audio, false);
+        AmbientPlayer.playScene(scene || null);
         const cleanup = () => {
             if (shouldRevoke) URL.revokeObjectURL(blobUrl);
             if (msg) { setLinePlayingByEncoded(msg, encT, encC, false); }
+            AmbientPlayer.stop();
         };
         audio.onended = cleanup;
         audio.onerror = cleanup;
@@ -1378,7 +1431,7 @@
             html = html.replace(dialogueRegex, (match) => {
                 if (match.includes('indextts-dialogue')) return match;
                 modified = true;
-                return `<span class="indextts-dialogue" data-t="${enc}" data-v="${vn.voice || ''}" data-c="${charEnc}" data-e="${emotionEnc}" title="点击播放">${match}</span><span class="indextts-inline-play" data-t="${enc}" data-v="${vn.voice || ''}" data-c="${charEnc}" data-e="${emotionEnc}" title="播放"><i class="fa-solid fa-play fa-xs"></i></span>`;
+                return `<span class="indextts-dialogue" data-t="${enc}" data-v="${vn.voice || ''}" data-c="${charEnc}" data-e="${emotionEnc}" data-s="${(vn.scene || '').replace(/"/g, '&quot;')}" title="点击播放">${match}</span><span class="indextts-inline-play" data-t="${enc}" data-v="${vn.voice || ''}" data-c="${charEnc}" data-e="${emotionEnc}" data-s="${(vn.scene || '').replace(/"/g, '&quot;')}" title="播放"><i class="fa-solid fa-play fa-xs"></i></span>`;
             });
         }
 
@@ -1394,7 +1447,7 @@
                     const character = base64ToUtf8(span.dataset.c || '');
                     const emotion = span.dataset.e || null;
                     const msgEl = span.closest('.mes');
-                    playSingleLine(text, voice, character, { msg: msgEl, encT: span.dataset.t, encC: span.dataset.c, emotion });
+                    playSingleLine(text, voice, character, { msg: msgEl, encT: span.dataset.t, encC: span.dataset.c, emotion, scene: span.dataset.s || null });
                 };
             });
             mesText.querySelectorAll('.indextts-inline-play').forEach(btn => {
@@ -1407,7 +1460,7 @@
                     const character = base64ToUtf8(btn.dataset.c || '');
                     const emotion = btn.dataset.e || null;
                     const msgEl = btn.closest('.mes');
-                    playSingleLine(text, voice, character, { msg: msgEl, encT: btn.dataset.t, encC: btn.dataset.c, emotion });
+                    playSingleLine(text, voice, character, { msg: msgEl, encT: btn.dataset.t, encC: btn.dataset.c, emotion, scene: btn.dataset.s || null });
                 };
             });
         }
@@ -1437,8 +1490,28 @@
         // 1. 文本提取路径分离
         let textContent = '';
         if (mode === 'audiobook') {
-            // 听书模式：使用 HTML 转 MD，捕捉所有符号，但保留换行符
-            textContent = htmlToMarkdown(mesText.innerHTML);
+            // 听书模式：当原始消息中存在思考标签时走"剥离+重渲染"路径；若无直接转Markdown，使用 HTML 转 MD，捕捉所有符号，但保留换行符
+            const rawMes = messageData && messageData.mes ? messageData.mes : null;
+            const hasThinkTags = rawMes && /(<|&lt;)(think|thinking|thought|summary|details)[\s>&]/i.test(rawMes);
+            let renderedHtml = null;
+            if (hasThinkTags && typeof ctx?.messageFormatting === 'function') {
+                try {
+                    renderedHtml = ctx.messageFormatting(
+                        stripThinkBlocks(rawMes),
+                        messageData.name || '',
+                        !!messageData.is_system,
+                        false,
+                        parseInt(mesId)
+                    );
+                } catch (e) {
+                    console.warn('[IndexTTS2] messageFormatting 重渲染失败，回退到DOM剥离:', e);
+                    renderedHtml = null;
+                }
+            }
+            if (renderedHtml === null) {
+                renderedHtml = stripThinkBlocks(mesText.innerHTML);
+            }
+            textContent = htmlToMarkdown(renderedHtml);
         } else {
             // GAL/RP 模式：优先读取底层原始数据(messageData.mes)
             if (messageData && messageData.mes) {
@@ -1460,6 +1533,8 @@
 
         if (!textContent) return result;
         textContent = textContent.replace(/\r/g, '\n');
+        textContent = stripThinkBlocks(textContent);
+
 
         // 2. 角色路由判定（底层逻辑）
         const isGroupChat = !!ctx?.groupId;
@@ -1486,17 +1561,25 @@
 
         // 3. 解析模式分发（顶层逻辑）
         if (mode === 'rp') {
-            // RP 模式：提取引号内容
-            const quotes = parseRP(textContent);
+            // RP模式：提取引号内容；若消息含有代码则剥离代码块，避免念出代码中的引号内容
+            const textForParse = textContent
+                .replace(/```[\s\S]*?```/g, ' ')
+                .replace(/`[^`\n]*`/g, ' ')
+                .replace(/<([a-z][a-z0-9]*)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ' ')
+                .replace(/<[^>]+>/g, ' ');
+            const quotes = parseRP(textForParse);
             if (quotes.length > 0) {
                 for (const q of quotes) {
                     result.push({ text: q.dialogue, character: speakerName, voice: speakerVoice, emotion: null, scene: null });
                 }
             } else {
-                // 无引号，整句朗读
-                result.push({ text: textContent.trim(), character: speakerName, voice: speakerVoice, emotion: null, scene: null });
+                // 无引号，整句朗读（使用剥离代码块后的文本，避免念出代码本身）
+                const fallback = textForParse.replace(/\s+/g, ' ').trim();
+                if (fallback) {
+                    result.push({ text: fallback, character: speakerName, voice: speakerVoice, emotion: null, scene: null });
+                }
             }
-            return result; 
+            return result;
         }
 
         if (mode === 'audiobook') {
@@ -2162,7 +2245,11 @@
                 setLinePlayingByEncoded(msg, encT, encC, false);
                 
                 const settings = getSettings();
-                const delaySec = settings.parsingMode === 'rp' ? parseFloat(settings.rpSentenceDelay) : NaN;
+                const delayRaw = settings.parsingMode === 'rp' ? settings.rpSentenceDelay
+                            : settings.parsingMode === 'gal' ? settings.galSentenceDelay
+                            : null;
+                const delaySec = parseFloat(delayRaw);
+
                 const mySessionId = sessionId; // 捕获当前会话ID
                 if (!isNaN(delaySec) && delaySec > 0) {
                     setTimeout(() => {
@@ -2431,7 +2518,11 @@
                     }
                     
                     const settings = getSettings();
-                    const delaySec = settings.parsingMode === 'rp' ? parseFloat(settings.rpSentenceDelay) : NaN;
+                    const delayRaw = settings.parsingMode === 'rp' ? settings.rpSentenceDelay
+                                : settings.parsingMode === 'gal' ? settings.galSentenceDelay
+                                : null;
+                    const delaySec = parseFloat(delayRaw);
+
                     const myQueueId = currentQueueId; // 捕获当前队列ID
                     if (!isNaN(delaySec) && delaySec > 0) {
                         setTimeout(() => {
@@ -2680,6 +2771,10 @@
                                 <label>延迟播放下一句 <span style="font-size:0.85em; opacity:0.7;">(秒，留空不延迟)</span></label>
                                 <input type="number" id="indextts-rp-delay" class="text_pole" value="${settings.rpSentenceDelay || ''}" min="0" step="0.5" style="width: 80px;">
                             </div>
+                            <div class="indextts-setting-row" id="indextts-gal-delay-row" style="${settings.parsingMode !== 'gal' ? 'display: none;' : ''}">
+                                <label>延迟播放下一句 <span style="font-size:0.85em; opacity:0.7;">(秒，留空不延迟)</span></label>
+                                <input type="number" id="indextts-gal-delay" class="text_pole" value="${settings.galSentenceDelay || ''}" min="0" step="0.5" style="width: 80px;">
+                            </div>                            
                             <div class="indextts-setting-row checkbox-row"><label for="indextts-enable-inline">启用行内增强渲染</label><input type="checkbox" id="indextts-enable-inline"${settings.enableInline !== false ? ' checked' : ''}></div>
                             <div class="indextts-setting-row checkbox-row"><label for="indextts-show-floating">显示悬浮播放控制器</label><input type="checkbox" id="indextts-show-floating"${settings.showFloatingPlayer !== false ? ' checked' : ''}></div>
                             <div class="indextts-setting-row checkbox-row"><label for="indextts-auto-inference">回复后自动推理</label><input type="checkbox" id="indextts-auto-inference"${settings.autoInference === true ? ' checked' : ''}></div>
@@ -2734,6 +2829,11 @@
                 if (rpDelayRow) {
                     rpDelayRow.style.display = e.target.value === 'rp' ? '' : 'none';
                 }
+
+                const galDelayRow = panel.querySelector('#indextts-gal-delay-row');
+                if (galDelayRow) { 
+                    galDelayRow.style.display = e.target.value === 'gal' ? '' : 'none'; 
+                }
             };
         }
         const rpDelayInput = panel.querySelector('#indextts-rp-delay');
@@ -2741,6 +2841,15 @@
             rpDelayInput.oninput = (e) => {
                 const s = getSettings();
                 s.rpSentenceDelay = e.target.value;
+                saveSettings();
+            };
+        }
+
+        const galDelayInput = panel.querySelector('#indextts-gal-delay');
+        if (galDelayInput) {
+            galDelayInput.oninput = (e) => {
+                const s = getSettings();
+                s.galSentenceDelay = e.target.value;
                 saveSettings();
             };
         }

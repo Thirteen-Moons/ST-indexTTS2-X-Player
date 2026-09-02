@@ -44,7 +44,7 @@ Version: 1.2.5 | Author: Thirteen-Moons
   
 ### 💓 Emotion Vectors
 
-  - Supports **48** emotion vectors for generating more emotionally rich speech
+  - Supports **49** emotion vectors for generating more emotionally rich speech
 <br><br>
   
 ### 🖱️ Floating Player
@@ -92,7 +92,7 @@ Version: 1.2.5 | Author: Thirteen-Moons
      
 <br>
 
-   - **48 Emotions**: Increased emotion mapping from the default 8 to 48. (Please use the example prompts in this README, not the plugin's default ones.)
+   - **49 Emotions**: Increased emotion mapping from the default 8 to 49. (Please use the example prompts in this README, not the plugin's default ones.)
 <br>
 
   - **Real-Time Pseudo-Streaming Segmentation**:

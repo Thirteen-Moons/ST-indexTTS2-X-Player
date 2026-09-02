@@ -312,7 +312,7 @@ If you don't like seeing square bracket tags, you can use the regex /\[[^\]]*\]/
 **When describing any character (main character, NPC, passerby, narrator) speaking, the format must be strictly followed, with dialogue on a separate line.**
   
 ## Format:
-[Character Name][Emotion][Scene]「Dialogue Content」
+[Character Name][Emotion][Scene]"Dialogue Content"
   
 ### Character Name:
 The name of the currently speaking character.

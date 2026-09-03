@@ -1,11 +1,30 @@
 // Copyright (c) 2026 Thirteen-Moons
 // Licensed under AGPL-3.0; see LICENSE for full terms
 // Derivative works must retain attribution to Thirteen-Moons
-// v1.2.5
+// v1.2.6
 
 (function () {
     const extensionName = "st-indextts2";
-    const extensionFolderPath = `scripts/extensions/third-party/${extensionName}/`;
+    const extensionFolderPath = (() => {
+        try {
+            const currentScript = document.currentScript;
+            if (currentScript && currentScript.src) {
+                return currentScript.src.replace(/\/[^\/]+$/, '/');
+            }
+        } catch (e) {}
+        
+        try {
+            const links = document.querySelectorAll('link[rel="stylesheet"]');
+            for (const link of links) {
+                const href = link.href || '';
+                if (href.includes('ST-indexTTS2-X-Player') || href.includes('st-indextts2')) {
+                    return href.replace(/\/[^\/]+$/, '/');
+                }
+            }
+        } catch (e) {}
+        
+        return `scripts/extensions/third-party/${extensionName}/`;
+    })();
 
     // ==================== Default Settings ====================
     const defaultSettings = {
@@ -202,13 +221,7 @@
     }
 
     function ensureCssLoaded() {
-        if (!document.querySelector(`link[href*="${extensionName}"]`)) {
-            const link = document.createElement('link');
-            link.rel = 'stylesheet';
-            link.href = `${extensionFolderPath}style.css`;
-            document.head.appendChild(link);
-            console.log('[IndexTTS2] CSS loaded');
-        }
+
     }
 
     // ==================== Global Audio Cache ====================
@@ -2606,13 +2619,14 @@
         let currentVersion = null;
 
         async function getCurrentVersion() {
-            // 从本地 manifest.json 读取版本号
             if (currentVersion) return currentVersion;
             try {
                 const response = await fetch(`${extensionFolderPath}manifest.json`, { cache: 'no-cache' });
                 if (response.ok) {
                     const data = await response.json();
                     currentVersion = data.version || '1.0.0';
+                } else {
+                    currentVersion = '1.0.0';  
                 }
             } catch (e) {
                 currentVersion = '1.0.0';
@@ -2629,6 +2643,7 @@
                     if (cachedResult === 'true') {
                         hasUpdate = true;
                         remoteVersion = localStorage.getItem('indextts_remote_version');
+                        await getCurrentVersion(); 
                         updateUI();
                     }
                     return;
@@ -2661,6 +2676,10 @@
                 
                 hasUpdate = isNewer;
                 localStorage.setItem('indextts_update_available', String(hasUpdate));
+                
+                if (currentVersion) {
+                    localStorage.setItem('indextts_local_version', currentVersion);
+                }                
 
                 if (hasUpdate) {
                     console.log('[IndexTTS2] 发现新版本:', remoteVersion, '当前:', localVer);
@@ -2678,7 +2697,7 @@
                 const badge = document.createElement('span');
                 badge.className = 'indextts-update-badge';
                 badge.textContent = 'New!';
-                badge.title = `有新版本 ${remoteVersion} 可用，请在扩展设置中点击更新`;
+                badge.title = `有新版本 ${remoteVersion} 可用，请前往github下载更新`;
                 badge.style.cssText = `
                     display: inline-block;
                     margin-left: 8px;
@@ -2687,13 +2706,26 @@
                     font-weight: normal;
                     vertical-align: middle;
                 `;
-                // 仅提示
                 const titleB = drawerToggle.querySelector('b');
                 if (titleB) {
                     titleB.insertAdjacentElement('afterend', badge);
                 } else {
                     drawerToggle.appendChild(badge);
                 }
+            }
+
+            // 弹窗提醒（每个浏览器会话只弹一次）
+            if (!sessionStorage.getItem('indextts_update_notified')) {
+                sessionStorage.setItem('indextts_update_notified', 'true');
+                setTimeout(() => {
+                    const localVerDisplay = currentVersion || localStorage.getItem('indextts_local_version') || '未知';
+                    const msg = `IndexTTS2 发现新版本！\n\n当前版本：${localVerDisplay}\n最新版本：${remoteVersion}\n\n请前往 GitHub下载更新。`;
+                    if (window.toastr) {
+                        window.toastr.info(msg, '更新提示', { timeOut: 7000, closeButton: true });
+                    } else {
+                        alert(msg);
+                    }
+                }, 1200);
             }
         }
 

@@ -1083,7 +1083,6 @@
         audio.onerror = cleanup;
         try {
             await audio.play();
-            if (window.toastr) window.toastr.success('播放中...');
         } catch (e) {
             cleanup();
             console.error('[IndexTTS2] Audio play error:', e);

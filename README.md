@@ -6,7 +6,7 @@
 
 基于原始插件 [indexTTS player](https://github.com/bronie-honkai/st-indextts2) 的二次修改 [st-indextts2-plus](https://github.com/xiaoxiongweihu/st-indextts2-plus)，再次进行开发与优化，让你的SillyTavern语音体验更加流畅。
 
-版本：1.2.5 | 作者：Thirteen-Moons
+版本：1.2.6 | 作者：Thirteen-Moons
 
 <br>
 
@@ -477,7 +477,10 @@ Q：indexTTS2出2.5了，会做对应更新吗？
 - 针对个别预设强制模型额外输出的思考块（非模型原生）进行了过滤，现支持```think、thinking、thought、details、summary```这几个常见的尖括号标签。此类思考块中的内容不会再被念出。
 - 针对常见的美化代码块进行了匹配，如```<div style="...">```，用了这类美化正则的状态栏中的内容不会被念出。
 - 针对常见的文本美化进行了匹配与放行，如```<mark>、<u>```这类，这类美化包裹的文本/台词可被正常播放。
-  
+
+## 📝v1.2.6
+### 修复
+调整更新检查逻辑与提醒。
 
 ---
 

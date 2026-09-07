@@ -1,7 +1,7 @@
 // Copyright (c) 2026 Thirteen-Moons
 // Licensed under AGPL-3.0; see LICENSE for full terms
 // Derivative works must retain attribution to Thirteen-Moons
-// v1.2.6
+// v1.2.7
 
 (function () {
     const extensionName = "st-indextts2";
@@ -26,7 +26,7 @@
         return `scripts/extensions/third-party/${extensionName}/`;
     })();
 
-    // ==================== Default Settings ====================
+    // ==================== 默认设置 ====================
     const defaultSettings = {
         apiUrl: 'http://127.0.0.1:7880/api/v1/tts/tasks',
         cloningUrl: 'http://127.0.0.1:7880/api/v1/indextts2_cloning',
@@ -45,16 +45,13 @@
         galSentenceDelay: '',
         showFloatingPlayer: true, 
         cacheImportPath: '\\\\SillyTavern\\\\data\\\\TTSsound',
-        ambientSoundPath: '',
         ambientSoundVolume: 0.4,
         ambientFadeDuration: 0,
         ambientLoopByScene: false,
-        vnRegex: '^\\[([^\\]|]+)(?:\\|[^\\]]*)?\\]\\|(.+)$',
         voiceMap: {},
         promptInjection: {
             enabled: false,
-            content: '描写任何角色（主要角色、NPC、路人）说话时，必须严格遵守格式，对话单开一行：\n 格式：[角色名][表情]「对话内容」\n - **严禁**只写名字（如[萧凡]），**严禁**漏掉表情。\n - **强制规则**：若无特定表情，必须使用[角色名][通常]「对话内容」。',
-            position: "depth",
+            content: '# 格式输出规范\n**描写任何角色（主要角色、NPC、路人、旁白）说话时，必须严格遵守格式，对话单开一行**\n\n## 格式：\n[角色名][情感][场景]“对话内容”\n\n### 角色名：\n当前说话的人物名称。\n\n### 情感：\n每个角色仅在以下选择一个最适配于当下情境的使用，若无特别匹配的情绪，则使用[通常]。\n- 温暖柔和类：温柔、宠溺、欣慰、怀念、释然\n- 喜悦类：小小的喜悦、期待、开心、喜极而泣、哭笑不得、惊喜\n- 羞涩：害羞、傲娇\n- 愤怒类：生气、羞愤、烦躁、隐忍的愤怒、气急败坏\n- 悲伤类：淡淡的忧伤、低落、心酸、心疼、强忍难过、悲伤、悲痛欲绝、心如死灰、绝望\n- 恐惧与紧张类变体：忧虑、紧张、害怕但强装镇定、惶恐、期待又不安、害怕、慌乱\n- 厌恶类：傲慢、嫌弃、嫉妒、讽刺、厌恶、恨之入骨\n- 惊讶类：略感意外、惊讶、大惊失色\n- 其他类型：平静、通常、无奈、尴尬、麻木、调侃\n\n### 对话内容：\n用「」或 “” 包裹角色说出的台词。\n\n### 场景：\n仅从以下两个分类中**选择一个**使用，仅在列表选择，避免自创。NSFW内容出现时，需切换到NSFW场景音，若无对应场景可以不填场景。\n#### 正常场景列表：\n乡村清晨、公园氛围、厨房_切菜、雨声、城镇闹市、沙滩海鸥鸣叫、平稳的心跳声、浴室_淋浴\n#### NSFW场景列表：\n床的摇晃声、浴室性爱声、女性轻微呻吟、男性喘息\n\n## 格式示例：\n[小明][开心][春日公园]“今天的天气真好呢。”\n他悠闲地在公园中漫步，看着来往的人群。',
             depth: 4,
             role: "system"
         },
@@ -64,7 +61,7 @@
         }
     };
 
-    // ==================== Utility Functions ====================
+    // ==================== 工具函数 ====================
     /**
      * 将 HTML 转换为 Markdown 文本
      * 注意：保留换行符 \n，仅合并水平空白，以确保听书模式分段正则正常工作
@@ -77,12 +74,13 @@
         text = text.replace(/<pre[^>]*><code[^>]*>([\s\S]*?)<\/code><\/pre>/gi, '\n\n```\n$1\n```\n');
         text = text.replace(/<code[^>]*>([^<]*)<\/code>/gi, '`$1`');
         text = text.replace(/<em>([\s\S]*?)<\/em>/gi, '*$1*');
-        text = text.replace(/<i>([^<]*)<\/i>/gi, '*$1*');
+        text = text.replace(/<i>([\s\S]*?)<\/i>/gi, '*$1*');
         text = text.replace(/<strong>([\s\S]*?)<\/strong>/gi, '**$1**');
-        text = text.replace(/<b>([^<]*)<\/b>/gi, '**$1**');
-        text = text.replace(/<h[1-6][^>]*>([^<]*)<\/h[1-6]>/gi, (match, content) => {
+        text = text.replace(/<b>([\s\S]*?)<\/b>/gi, '**$1**');
+        text = text.replace(/<h[1-6][^>]*>([\s\S]*?)<\/h[1-6]>/gi, (match, content) => {
+            const cleanContent = content.replace(/<[^>]+>/g, '');
             const level = match.match(/<h([1-6])/)[1];
-            return '\n' + '#'.repeat(level) + ' ' + content + '\n';
+            return '\n' + '#'.repeat(level) + ' ' + cleanContent + '\n';
         });
         text = text.replace(/<[^>]+>/g, ' ');
         text = text.replace(/[ \t]+/g, ' ');
@@ -91,7 +89,7 @@
         return text;
     }
 
-        // ==================== Settings Management ====================
+        // ==================== 设置管理 ====================
     function getContext() {
         try {
             if (typeof SillyTavern !== 'undefined' && SillyTavern?.getContext) {
@@ -101,12 +99,13 @@
                 return window.SillyTavern.getContext();
             }
         } catch (e) {
-            console.warn('[IndexTTS2] getContext error:', e);
+            console.warn('[IndexTTS2] 获取上下文失败:', e);
         }
         return null;
     }
 
     function deepMergeDefaults(target, source) {
+        // 注意：使用 JSON.parse(JSON.stringify) 进行深拷贝，未来若设置对象体积增大可考虑结构化克隆优化
         if (!source || typeof source !== 'object') return target;
         if (!target || typeof target !== 'object') return JSON.parse(JSON.stringify(source));
         for (const key of Object.keys(source)) {
@@ -135,7 +134,6 @@
             delete migratedPreset.selected_preset;
             delete migratedPreset.presets;
             root = { selected_preset: 'Default', presets: { 'Default': migratedPreset } };
-            console.log('[IndexTTS2] Migrated/initialized preset architecture');
         }
         if (contextStore) contextStore[extensionName] = root;
         if (!root.presets[root.selected_preset]) {
@@ -163,14 +161,14 @@
 
     function saveSettings() {
         const ctx = getContext();
-        if (!ctx) { console.warn('[IndexTTS2] saveSettings: Context not available'); return; }
+        if (!ctx) { console.warn('[IndexTTS2] 保存设置失败: 上下文不可用'); return; }
         if (!ctx.extensionSettings) ctx.extensionSettings = {};
         const root = getRootSettings();
         if (!root) return;
         ctx.extensionSettings[extensionName] = root;
         if (typeof ctx.saveSettingsDebounced === 'function') ctx.saveSettingsDebounced();
         else if (typeof ctx.saveSettings === 'function') ctx.saveSettings();
-        else console.warn('[IndexTTS2] saveSettings: no save function');
+        else console.warn('[IndexTTS2] 保存设置失败: 无保存函数');
     }
 
     function switchPreset(name) {
@@ -189,7 +187,7 @@
             const ctx = window.SillyTavern?.getContext?.() || window.getContext?.();
             if (ctx?.characterId !== undefined && ctx?.characterId !== null) return `char_${ctx.characterId}`;
             if (ctx?.groupId) return `group_${ctx.groupId}`;
-        } catch (e) { console.error('[IndexTTS2] getCardId error:', e); }
+        } catch (e) { console.error('[IndexTTS2] 获取卡片ID失败:', e); }
         return 'default';
     }
 
@@ -220,15 +218,13 @@
         return filename;
     }
 
-    function ensureCssLoaded() {
-
-    }
-
-    // ==================== Global Audio Cache ====================
+    // ==================== 全局音频缓存 ====================
     const audioCache = {};
-    let currentPlayback = { audio: null, msg: null, mesId: null, index: -1, playlist: null, totalDuration: 0, controller: null, stop: function () { if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } } this.audio = null; } };
+    function createPlaybackState() {
+        return { audio: null, msg: null, mesId: null, index: -1, playlist: null, totalDuration: 0, controller: null, sessionId: null, stop: function () { if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } } if (this.shouldRevoke && this.blobUrl) { try { URL.revokeObjectURL(this.blobUrl); } catch (e) { } } this.audio = null; } };
+    }
+    let currentPlayback = createPlaybackState();
     const inferenceLocks = new Set();
-    let miniPlayerEl = null, miniPlayerProgress = null, miniPlayerToggle = null, miniPlayerSpeed = null, miniPlayerHideTimer = null, miniPlayerBoundAudio = null;
 
     function clearMemoryAudioCache() {
         try {
@@ -236,16 +232,14 @@
                 if (!Array.isArray(list)) return;
                 list.forEach(item => { if (item && item.blobUrl) { try { URL.revokeObjectURL(item.blobUrl); } catch (e) { } } });
             });
-        } catch (e) { console.warn('[IndexTTS2] clearMemoryAudioCache error:', e); }
+        } catch (e) { console.warn('[IndexTTS2] 清理内存缓存失败:', e); }
         Object.keys(audioCache).forEach(k => delete audioCache[k]);
-        if (currentPlayback.audio) { try { currentPlayback.audio.pause(); } catch (e) { } }
-        currentPlayback = {
-            audio: null, msg: null, mesId: null, index: -1, sessionId: null,
-            stop: function () {
-                if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } }
-                this.audio = null; this.msg = null; this.mesId = null; this.index = -1; this.sessionId = null;
-            }
-        };
+        if (typeof currentPlayback.stop === 'function') {
+            currentPlayback.stop(); // 复用 stop：顺带释放行内播放的临时 blobUrl（如有）
+        } else if (currentPlayback.audio) {
+            try { currentPlayback.audio.pause(); } catch (e) { }
+        }
+        currentPlayback = createPlaybackState();
     }
 
     function getMessageId(msg) {
@@ -254,21 +248,23 @@
         if (!mesIdAttr) mesIdAttr = msg.dataset?.mesid;
         if (!mesIdAttr) mesIdAttr = msg.getAttribute('data-mesid');
         if (mesIdAttr) return String(mesIdAttr);
+        // fallback：仅当元素仍在 DOM 中时才用 index，避免消息删除后索引漂移
+        if (!document.contains(msg)) return null;
         const list = Array.from(document.querySelectorAll('.mes'));
         const idx = list.indexOf(msg);
         return idx >= 0 ? String(idx) : null;
     }
 
-    function utf8ToBase64(str) { try { return btoa(unescape(encodeURIComponent(str))); } catch (e) { console.warn('[IndexTTS2] utf8ToBase64 error:', e); return ''; } }
-    function base64ToUtf8(str) { try { return decodeURIComponent(escape(atob(str))); } catch (e) { console.warn('[IndexTTS2] base64ToUtf8 error:', e); return ''; } }
+    function utf8ToBase64(str) { try { return btoa(unescape(encodeURIComponent(str))); } catch (e) { console.warn('[IndexTTS2] UTF8转Base64失败:', e); return ''; } }
+    function base64ToUtf8(str) { try { return decodeURIComponent(escape(atob(str))); } catch (e) { console.warn('[IndexTTS2] Base64转UTF8失败:', e); return ''; } }
 
-    // ==================== IndexedDB Audio Storage ====================
+    // ==================== IndexedDB 音频存储  ====================
     const AudioStorage = (function () {
         let dbPromise = null;
         function getDB() {
             if (dbPromise) return dbPromise;
             dbPromise = new Promise((resolve, reject) => {
-                if (!window.indexedDB) { console.warn('[IndexTTS2] indexedDB not supported, audio cache disabled'); resolve(null); return; }
+                if (!window.indexedDB) { console.warn('[IndexTTS2] 浏览器不支持indexedDB，音频缓存已禁用'); resolve(null); return; }
                 const request = window.indexedDB.open('IndexTTS_Store', 2);
                 request.onerror = () => { console.error('[IndexTTS2] indexedDB open error:', request.error); resolve(null); };
                 request.onupgradeneeded = (event) => {
@@ -346,14 +342,14 @@
         return { saveAudio, getAudio, getAllAudios, clearAllAudios, saveConfig, getConfig };
     })();
 
-    // ==================== Local Repository Management ====================
+    // ==================== 本地仓库管理 ====================
     const LocalRepo = (function () {
         let dirHandle = null;
         async function init() {
             try {
                 const handle = await AudioStorage.getConfig('localDirHandle');
-                if (handle) { dirHandle = handle; console.log('[IndexTTS2] LocalRepo handle restored'); }
-            } catch (e) { console.warn('[IndexTTS2] LocalRepo init error:', e); }
+                if (handle) { dirHandle = handle; }
+            } catch (e) { console.warn('[IndexTTS2] 本地仓库初始化失败:', e); }
         }
         async function setHandle(handle) { if (!handle) return; dirHandle = handle; await AudioStorage.saveConfig('localDirHandle', handle); }
         function getHandle() { return dirHandle; }
@@ -363,30 +359,30 @@
             try {
                 if ((await dirHandle.queryPermission(opts)) === 'granted') return true;
                 if ((await dirHandle.requestPermission(opts)) === 'granted') return true;
-            } catch (e) { console.warn('[IndexTTS2] Permission request failed:', e); }
+            } catch (e) { console.warn('[IndexTTS2] 权限请求失败', e); }
             return false;
         }
         return { init, setHandle, getHandle, requestPermission };
     })();
 
-    // ==================== Ambient Sound Player ====================
+    // ==================== 环境音效播放 ====================
     const AmbientPlayer = (function () {
-        let dirHandle = null, currentScene = null, currentAudio = null, fadeTimer = null;
+        let dirHandle = null, currentScene = null, currentAudio = null;
         let playSceneRequestId = 0; // 防止异步错乱
 
         function _getFadeDuration() { return parseInt(getSettings().ambientFadeDuration ?? 0) || 0; }
         async function init() {
             try {
                 const saved = await AudioStorage.getConfig('ambientDirHandle');
-                if (saved) { dirHandle = saved; console.log('[IndexTTS2][Ambient] dir handle restored'); }
-            } catch (e) { console.warn('[IndexTTS2][Ambient] init error:', e); }
+                if (saved) { dirHandle = saved; }
+            } catch (e) { console.warn('[IndexTTS2][Ambient] 初始化失败', e); }
             preloadScenes();
         }
         async function setDirHandle(handle) { if (!handle) return; dirHandle = handle; await AudioStorage.saveConfig('ambientDirHandle', handle); }
         function getDirHandle() { return dirHandle; }
         async function queryPermission() {
             if (!dirHandle) return false;
-            try { return (await dirHandle.queryPermission({ mode: 'read' })) === 'granted'; } catch (e) { console.warn('[IndexTTS2][Ambient] queryPermission error:', e); }
+            try { return (await dirHandle.queryPermission({ mode: 'read' })) === 'granted'; } catch (e) { console.warn('[IndexTTS2][Ambient] 查询权限失败r:', e); }
             return false;
         }
         async function requestPermission() {
@@ -394,7 +390,7 @@
             try {
                 if ((await dirHandle.queryPermission({ mode: 'read' })) === 'granted') return true;
                 if ((await dirHandle.requestPermission({ mode: 'read' })) === 'granted') return true;
-            } catch (e) { console.warn('[IndexTTS2][Ambient] permission error:', e); }
+            } catch (e) { console.warn('[IndexTTS2][Ambient] 权限请求失败:', e); }
             return false;
         }
         function _getVolume() { const s = getSettings(); return Math.max(0, Math.min(1, parseFloat(s.ambientSoundVolume ?? 0.4))); }
@@ -449,7 +445,7 @@
             const rawApiUrl = getSettings().apiUrl || 'http://127.0.0.1:7880';
             const baseUrl = (rawApiUrl.match(/^(https?:\/\/[^\/]+)/i)?.[0] || 'http://127.0.0.1:7880').replace(/\/$/, '');
 
-            sceneAudioListPromise = fetch(`${baseUrl}/api/v1/scene_audios`)
+            sceneAudioListPromise = fetchWithTimeout(`${baseUrl}/api/v1/scene_audios`)
                 .then(res => res.json())
                 .then(data => {
                     sceneAudioListCache = new Set(data.scenes || []);
@@ -472,7 +468,6 @@
         }
 
         async function _loadScene(sceneName) {
-            console.log('[IndexTTS2][Ambient] _loadScene: sceneName=' + sceneName);
             if (!sceneName) return null;
             const rawApiUrl = getSettings().apiUrl || 'http://127.0.0.1:7880';
             const baseUrl = (rawApiUrl.match(/^(https?:\/\/[^\/]+)/i)?.[0] || 'http://127.0.0.1:7880').replace(/\/$/, '');
@@ -482,7 +477,6 @@
                 for (const name of candidates) {
                     if (listSet.has(name)) {
                         const url = `${baseUrl}/pjy/${encodeURIComponent(name)}`;
-                        console.log('[IndexTTS2][Ambient] _loadScene: 在列表中发现 url=', url);
                         return url;
                     }
                 }
@@ -525,7 +519,6 @@
                 console.log('[IndexTTS2][Ambient] playScene: 为场景调用 audio.play():', sceneName);
                 await audio.play();
                 if (currentAudio === audio) {
-                    console.log('[IndexTTS2][Ambient] playScene: audio.play() 成功');
                     _fadeIn(audio);
                 }
             } catch (e) {
@@ -557,6 +550,13 @@
         return { init, preloadScenes, setDirHandle, getDirHandle, requestPermission, playScene, stop, stopImmediate, setVolume, getVolume };
     })();
 
+    function fetchWithTimeout(url, options = {}, timeout = 90000) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeout);
+        return fetch(url, { ...options, signal: controller.signal })
+            .finally(() => clearTimeout(timeoutId));
+    }
+
     async function generateHash(character, voiceId, text, speed, volume, emotion) {
         const emotionPart = emotion ? `|${emotion}` : '';
         const input = `${character || ''}|${voiceId || ''}|${speed}|${volume}|${text || ''}${emotionPart}`;
@@ -568,7 +568,7 @@
                 const hashArray = Array.from(new Uint8Array(digest));
                 return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
             }
-        } catch (e) { console.warn('[IndexTTS2] generateHash subtle error, fallback to simple hash:', e); }
+        } catch (e) { console.warn('[IndexTTS2] SHA-256哈希失败，回退到简单哈希:', e); }
         let hash = 0;
         for (let i = 0; i < input.length; i++) {
             const ch = input.charCodeAt(i);
@@ -578,7 +578,7 @@
         return `fallback_${hash.toString(16)}`;
     }
 
-    // ==================== Audio Transcoding ====================
+    // ==================== 音频转码 ====================
     async function convertToWav(file) {
         console.log(`[IndexTTS2] Converting: ${file.name} (${file.type}, ${file.size} bytes)`);
         return new Promise((resolve, reject) => {
@@ -588,12 +588,11 @@
                     const arrayBuffer = reader.result;
                     const audioContext = new (window.AudioContext || window.webkitAudioContext)();
                     const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-                    console.log(`[IndexTTS2] Audio: ${audioBuffer.duration.toFixed(2)}s,${audioBuffer.sampleRate}Hz`);
                     const wavBlob = audioBufferToWav(audioBuffer);
                     const base64 = await blobToBase64Pure(wavBlob);
-                    audioContext.close();
+                    await audioContext.close();
                     resolve(base64);
-                } catch (e) { console.error('[IndexTTS2] Transcode error:', e); reject(e); }
+                } catch (e) { console.error('[IndexTTS2] 音频转码失败:', e); reject(e); }
             };
             reader.onerror = reject;
             reader.readAsArrayBuffer(file);
@@ -634,7 +633,7 @@
         });
     }
 
-    // ==================== VN / Audiobook / RP Parsing ====================
+    // ==================== GAL/听书/RP模式解析 ====================
     const textEmotionVectorMap = {
         开心: '0.78,0,0,0,0,0,0,0', 生气: '0,0.79,0,0,0,0,0,0', 悲伤: '0,0,0.72,0,0,0,0,0', 害怕: '0,0,0,0.95,0,0,0,0',
         厌恶: '0,0,0,0,1,0,0,0', 低落: '0,0,0,0,0,1,0,0', 惊讶: '0,0,0,0,0,0,0.72,0', 平静: '0,0,0,0,0,0,0,0.65',
@@ -682,7 +681,7 @@
             } catch (_) { }
 
             // 格式1: [角色][表情][场景]「对话」 或 [角色][表情][场景] 对话（三重标签）
-            const threeTagRegex = /^\s*\[([^\]\n]+)\]\s*\[([^\]\n]*)\]\s*\[([^\]\n]+)\]\s*:?\s*([「“”『](.*?)[」””』]|.+)\s*$/;
+            const threeTagRegex = /^\s*\[([^\]\n]+)\]\s*\[([^\]\n]*)\]\s*\[([^\]\n]+)\]\s*:?\s*([「"“『](.*?)[」"”』]|.+)\s*$/;
             const m3 = trimmed.match(threeTagRegex);
             if (m3) {
                 const character = (m3[1] || '').replace(/\s+/g, ' ').trim();
@@ -693,14 +692,13 @@
                 const inner = quoteInner !== undefined ? quoteInner.trim() : rawContent;
                 if (character && inner) {
                     applyTextEmotion(expression);
-                    const r3 = { character, scene, dialogue: inner, rawContent, quoted: rawContent, isAction: false, isQuoted: quoteInner !== undefined, emotion };
-                    console.log('[IndexTTS2][Ambient] parseVNLine 三标签命中 character=' + character + ' scene=' + scene + ' dialogue=' + inner);
+                    const r3 = { character, scene, dialogue: inner, rawContent, quoted: rawContent, isQuoted: quoteInner !== undefined, emotion };
                     return r3;
                 }
             }
 
             // 格式2: [角色][表情]「对话」 或 [角色][表情] 对话（两重标签）
-            const pipeTagRegex = /^\s*\[([^\]\n]+)\]\s*(?:\|\s*)?\[([^\]]*)\]\s*:?\s*([「""『](.*?)[」""』]|.+)\s*$/;
+            const pipeTagRegex = /^\s*\[([^\]\n]+)\]\s*(?:\|\s*)?\[([^\]]*)\]\s*:?\s*([「"“『](.*?)[」"”』]|.+)\s*$/;
             let match = trimmed.match(pipeTagRegex);
             if (match) {
                 const character = (match[1] || '').replace(/\s+/g, ' ').trim();
@@ -710,22 +708,21 @@
                 const inner = quoteInner !== undefined ? quoteInner.trim() : rawContent;
                 if (character && inner) {
                     applyTextEmotion(expression);
-                    return { character, dialogue: inner, rawContent, quoted: rawContent, isAction: false, isQuoted: quoteInner !== undefined, emotion };
-                    console.log('[IndexTTS2][Ambient] parseVNLine 两标签命中');
+                    return { character, dialogue: inner, rawContent, quoted: rawContent, isQuoted: quoteInner !== undefined, emotion };
                 }
             }
 
             // 格式3 & 4: [角色]「对话」 或 [角色] 对话（无表情标签，允许无空格紧接引号）
-            const bracketRegex = /^\s*\[([^\]]+)\](?:\[[\d.,\s-]*\])?\s*([「""『](.*?)[」""』]|.+)\s*$/;
+            const bracketRegex = /^\s*\[([^\]]+)\](?:\[[\d.,\s-]*\])?\s*([「"“『](.*?)[」"”』]|.+)\s*$/;
             match = trimmed.match(bracketRegex);
             if (match) {
                 const character = (match[1] || '').replace(/\s+/g, ' ').trim();
                 let content = (match[2] || '').trim();
                 if (!character || !content) return null;
-                const quoteMatch = content.match(/^[「""『](.*?)[」""』]\s*$/);
+                const quoteMatch = content.match(/^[「"“『](.*?)[」"”』]\s*$/);
                 const dialogue = quoteMatch ? quoteMatch[1].trim() : content;
                 if (!dialogue) return null;
-                return { character, dialogue, rawContent: content, quoted: content, isAction: false, isQuoted: !!quoteMatch, emotion };
+                return { character, dialogue, rawContent: content, quoted: content, isQuoted: !!quoteMatch, emotion };
             }
 
             // 格式5 & 6: [角色] 台词（无引号，允许无空格紧接内容）
@@ -735,7 +732,7 @@
                 const character = (match[1] || '').replace(/\s+/g, ' ').trim();
                 const dialogue = (match[2] || '').trim();
                 if (character && dialogue) {
-                    return { character, dialogue, rawContent: dialogue, quoted: dialogue, isAction: false, isQuoted: false, emotion };
+                    return { character, dialogue, rawContent: dialogue, quoted: dialogue, isQuoted: false, emotion };
                 }
             }
             return null;
@@ -776,10 +773,15 @@
             text = text.replace(/<div\b[^>]*?\bstyle\s*=[^>]*?>[\s\S]*?<\/div\s*>/gi, ' ');
             text = text.replace(/<span\b[^>]*?\bstyle\s*=[^>]*?>[\s\S]*?<\/span\s*>/gi, ' ');
             // 2. 非标准 HTML 标签（如 <status>、<card>、<think-block> 等）→ 整段删除
-            const allowedTags = 'div|span|p|br|b|strong|em|i|u|s|del|ins|code|pre|font|mark|small|big|sub|sup|center|q|cite|h[1-6]|a|img|ul|ol|li|blockquote|table|tr|td|th|thead|tbody|hr';
+            const allowedTags = 'div|span|p|br|b|strong|em|i|u|s|strike|del|ins|code|pre|font|mark|small|big|sub|sup|center|q|cite|nobr|h[1-6]|a|img|ul|ol|li|blockquote|table|tr|td|th|thead|tbody|hr';
             text = text.replace(new RegExp(`<(?!/?(?:${allowedTags})\\b)[a-z][a-z0-9]*\\b[^>]*>[\\s\\S]*?</[a-z][a-z0-9]*\\s*>`, 'gi'), ' ');
         } while (text !== prev);
         return text;
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
     }
 
     /**
@@ -787,11 +789,11 @@
      * 支持：「」 "" 『』 “” ‘’
      */
     function parseRP(text) {
-        const quoteRegex = /(「([^」]+)」|"([^"]+)"|"([^"]+)"|『([^』]+)』|“([^”]+)”|‘([^’]+)’)/g;
+        const quoteRegex = /(「([^」]+)」|"([^"]+)"|『([^』]+)』|“([^”]+)”|‘([^’]+)’)/g;
         const matches = [];
         let match;
         while ((match = quoteRegex.exec(text)) !== null) {
-            const dialogue = match[2] || match[3] || match[4] || match[5] || match[6] || match[7];
+            const dialogue = match[2] || match[3] || match[4] || match[5] || match[6];
             if (dialogue) {
                 matches.push({ dialogue: dialogue.trim(), rawContent: match[0] });
             }
@@ -817,8 +819,9 @@
             document.querySelectorAll('.mes[is_user="false"]').forEach(msgEl => {
                 let mesIdAttr = msgEl.getAttribute('mesid') || msgEl.dataset?.mesid || msgEl.getAttribute('data-mesid');
                 let rawText = '';
-                if (mesIdAttr && chatArray[parseInt(mesIdAttr)]) {
-                    rawText = chatArray[parseInt(mesIdAttr)].mes || '';
+                const mesIdNum = Number(mesIdAttr);
+                if (!isNaN(mesIdNum) && chatArray[mesIdNum]) {
+                    rawText = chatArray[mesIdNum].mes || '';
                 } else {
                     const mesText = msgEl.querySelector('.mes_text');
                     if (mesText) rawText = mesText.innerText || '';
@@ -839,7 +842,7 @@
         return Array.from(characters).sort();
     }
 
-    // ==================== TTS API & Cache Flow ====================
+    // ==================== TTS接口与缓存流程 ====================
     /**
      * 推理与缓存核心函数
      * 作用域重构：
@@ -900,7 +903,8 @@
                 { regex: /[\w\.-]+@[\w\.-]+\.\w+/g, name: '邮箱' },
                 { regex: /ISBN[:\s]*[\d\-X]+/gi, name: 'ISBN' },
                 { regex: /\[\d+\]/g, name: '方括号脚注' },
-                { regex: /\(\d+\)/g, name: '圆括号脚注' }
+                { regex: /\(\d+\)/g, name: '圆括号脚注' },
+                { regex: /(?<=[\u4e00-\u9fa5])\s*\/\s*(?=[\u4e00-\u9fa5])/g, name: '中文间斜杠' }
             ];
             patterns.forEach(({ regex, name }) => {
                 const before = processedText;
@@ -929,15 +933,11 @@
                 .replace(/([\u4e00-\u9fa5，。！？、；：])\s+(?=[\u4e00-\u9fa5，。！？、；：])/g, '$1') // 去除中文及中文标点之间的空格
                 .replace(/\n{2,}/g, '\n')          // 合并多余换行
                 .trim();
-
+            console.log('[IndexTTS2] 过滤后文本:', JSON.stringify(processedText));
+            console.log('[IndexTTS2] ===== 文本处理结束 =====');
         } else {
             // GAL/RP 模式：只清理水平空白，保留格式符号和换行结构
             processedText = processedText.replace(/[ \t]+/g, ' ').trim();
-        }
-
-        if (settings.parsingMode === 'audiobook' && !(settings.regexFilter?.enabled)) {
-            console.log('[IndexTTS2] 过滤后文本:', JSON.stringify(processedText));
-            console.log('[IndexTTS2] ===== 文本处理结束 =====');
         }
 
         text = processedText;
@@ -951,17 +951,14 @@
         try {
             const cached = await AudioStorage.getAudio(hash);
             if (cached && cached.blob) {
-                console.log('[IndexTTS2] [Cache Hit]', hash);
                 return { hash, blob: cached.blob, character, text, voice: normVoice, speed, volume, isCached: true };
             }
-        } catch (e) { console.warn('[IndexTTS2] getAudio failed:', e); }
+        } catch (e) { console.warn('[IndexTTS2] 读取缓存失败:', e); }
 
         if (!allowFetch) {
-            console.log('[IndexTTS2] Auto-inference disabled & cache miss, skipping API request.');
             return null;
         }
 
-        console.log('[IndexTTS2] [API Request]', hash);
         const payload = {
             text: text,
             prompt_audio: normVoice,
@@ -976,14 +973,9 @@
                 payload.emo_weight = 0.6;
             }
         }
-        if (settings.parsingMode === 'audiobook') {
-            console.log('[IndexTTS2] ===== 最终发送给 TTS 的文本 =====');
-            console.log(JSON.stringify(text));
-            console.log('[IndexTTS2] ================================');
-        }
 
         try {
-            const res = await fetch(settings.apiUrl, {
+            const res = await fetchWithTimeout(settings.apiUrl, {
                 method: 'POST',
                 mode: 'cors',
                 headers: { 'Content-Type': 'application/json' },
@@ -995,7 +987,7 @@
             }
             const blob = await res.blob();
             const record = { hash, blob, character, text, voice: normVoice, speed, volume, timestamp: Date.now(), isCached: false };
-            AudioStorage.saveAudio(record).catch(e => { console.warn('[IndexTTS2] saveAudio failed:', e); });
+            AudioStorage.saveAudio(record).catch(e => { console.warn('[IndexTTS2] 保存缓存失败:', e); });
             return record;
         } catch (e) {
             console.error('[IndexTTS2] TTS API Error:', e);
@@ -1036,7 +1028,6 @@
                 }
             }
         } else {
-            console.log(`[IndexTTS2] 使用传入语音: "${finalVoice}"`);
         }
 
         const mesId = ctx.mesId || (msg ? getMessageId(msg) : null);
@@ -1044,7 +1035,6 @@
             const cleanText = text.trim();
             const recordInCache = audioCache[mesId].find(r => r.text === cleanText);
             if (recordInCache && recordInCache.blobUrl) {
-                console.log('[IndexTTS2] Memory Cache Hit for playSingleLine:', mesId);
                 playAudioFromRecord({ blobUrl: recordInCache.blobUrl, msg, encT, encC, character, text: cleanText, volume: ctx.volume, scene });
                 return;
             }
@@ -1069,10 +1059,20 @@
         vol = Math.max(0, Math.min(1.0, vol));// 强制限制在 0 ~ 1.0 之间，防止 HTMLMediaElement 报错
         audio.volume = vol;
         if (msg) { clearPlayingInMessage(msg); setLinePlayingByEncoded(msg, encT, encC, true); }
-        if (currentPlayback.audio) { try { currentPlayback.audio.pause(); } catch (e) { } }
-        currentPlayback = { audio, msg, mesId: msg ? getMessageId(msg) : null, index: -1, playlist: null, totalDuration: 0, controller: null, stop: function () { if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } } this.audio = null; } };
+        if (typeof currentPlayback.stop === 'function') {
+            currentPlayback.stop(); // 中断旧播放：暂停、清事件、释放其临时 blobUrl（如有）
+        } else if (currentPlayback.audio) {
+            try {
+                currentPlayback.audio.pause();
+            } catch (e) {
+            }
+        }
+        if (currentPlayback.msg && currentPlayback.msg !== msg) {
+            clearPlayingInMessage(currentPlayback.msg); // 清除旧消息上残留的播放高亮
+        }
+        currentPlayback = { audio, msg, mesId: msg ? getMessageId(msg) : null, blobUrl, shouldRevoke, index: -1, playlist: null, totalDuration: 0, controller: null, stop: function () { if (this.audio) { try { this.audio.pause(); this.audio.onended = null; this.audio.onerror = null; } catch (e) { } } if (this.shouldRevoke && this.blobUrl) { try { URL.revokeObjectURL(this.blobUrl); } catch (e) { } } this.audio = null; } };
 
-        attachMiniPlayerToAudio(audio, false);
+        attachBottomProgress(audio);
         AmbientPlayer.playScene(scene || null);
         const cleanup = () => {
             if (shouldRevoke) URL.revokeObjectURL(blobUrl);
@@ -1085,7 +1085,7 @@
             await audio.play();
         } catch (e) {
             cleanup();
-            console.error('[IndexTTS2] Audio play error:', e);
+            console.error('[IndexTTS2] 音频播放失败:', e);
             if (e.name === 'NotAllowedError') {
                 if (window.toastr) window.toastr.warning('浏览器已拦截自动播放，请先点击页面任意处，或手动点击播放按钮');
             } else {
@@ -1096,7 +1096,7 @@
 
     async function playTTS(text, voiceFile) { return playSingleLine(text, voiceFile, '', {}); }
 
-    // ==================== Voice Cloning ====================
+    // ==================== 音声克隆 ====================
     async function cloneVoice(characterName, base64Audio, originalFileName) {
         const settings = getSettings();
         console.log(`[IndexTTS2] Clone: ${characterName}, base64 len=${base64Audio.length}`);
@@ -1112,22 +1112,21 @@
             const baseUrl = (settings.cloningUrl || 'http://127.0.0.1:7880/api/v1/indextts2_cloning').replace(/\/api\/v1\/indextts2_cloning.*$/ , '').replace(/\/+$/, '');
             const uploadUrl = baseUrl + '/api/v1/upload';
             console.log(`[IndexTTS2] Uploading to: ${uploadUrl}, filename:${uploadFileName}`);
-            const res = await fetch(uploadUrl, { method: 'POST', mode: 'cors', body: formData });
+            const res = await fetchWithTimeout(uploadUrl, { method: 'POST', mode: 'cors', body: formData });
             const text = await res.text();
-            console.log(`[IndexTTS2] Upload response: ${res.status}`, text);
             if (!res.ok) { if (window.toastr) window.toastr.error(`上传失败 HTTP ${res.status}:${text}`); return null; }
             const data = JSON.parse(text);
             const id = data.filename || data.id || data.voice_id || data.name;
             if (id) { if (window.toastr) window.toastr.success(`参考音频上传成功: ${id}`); return id; }
             return null;
         } catch (e) {
-            console.error('[IndexTTS2] Clone Error:', e);
+            console.error('[IndexTTS2] 克隆失败:', e);
             if (window.toastr) window.toastr.error('上传失败: ' + e.message);
             return null;
         }
     }
 
-    // ==================== Config Popup ====================
+    // ==================== 配音配置面板 ====================
     function showConfigPopup() {
         const cardId = getCardId();
         const cardName = getCardName();
@@ -1306,7 +1305,7 @@
 
             const settings = getSettings();
             const voiceListUrl = settings.voiceListUrl || 'http://127.0.0.1:7880/api/v1/voices' ;
-            fetch(voiceListUrl, { mode: 'cors' })
+            fetchWithTimeout(voiceListUrl, { mode: 'cors' })
                 .then(r => r.json())
                 .then(data => {
                     const voices = Array.isArray(data) ? data : (data.voices || []);
@@ -1356,7 +1355,7 @@
         }
     }
 
-    // ==================== Message UI Injection ====================
+    // ==================== M消息界面注入 ====================
     function injectMessageButtons(msg) {
         if (msg.querySelector('.indextts-msg-btns')) return;
         const btns = msg.querySelector('.mes_buttons');
@@ -1370,7 +1369,7 @@
         `;
         const playBtn = group.querySelector('.indextts-play');
         const inferBtn = group.querySelector('.indextts-infer');
-        if (playBtn) { playBtn.onclick = e => { e.stopPropagation(); playMessageQueue(msg, playBtn); }; setupMiniPlayerHover(playBtn); }
+        if (playBtn) { playBtn.onclick = e => { e.stopPropagation(); playMessageQueue(msg, playBtn); }; }
         if (inferBtn) { inferBtn.onclick = e => { e.stopPropagation(); inferMessageAudios(msg, inferBtn); }; }
         group.querySelector('.indextts-cfg').onclick = e => { e.stopPropagation(); showConfigPopup(); };
         btns.appendChild(group);
@@ -1429,6 +1428,10 @@
 
         if (vnLines.length === 0) { mesText.dataset.indexttsInjected = 'true'; return; }
 
+        // 防嵌套：若 DOM 中残留旧的注入标签（外部渲染异常等导致），先解除包裹再重新注入
+        mesText.querySelectorAll('.indextts-dialogue').forEach(el => el.replaceWith(...el.childNodes));
+        mesText.querySelectorAll('.indextts-inline-play').forEach(el => el.remove());
+
         let html = mesText.innerHTML;
         let modified = false;
         for (const vn of vnLines) {
@@ -1478,8 +1481,6 @@
         }
         mesText.dataset.indexttsInjected = 'true';
     }
-
-    function playMessageAudio(msg) { playMessageQueue(msg); }
 
     /**
      * 从消息中收集需要推理的文本行
@@ -1617,7 +1618,7 @@
             const trimmed = line.trim();
             if (!trimmed) continue;
             const parsed = parseVNLine(trimmed);
-            if (parsed && !parsed.isAction) {
+            if (parsed) {
                 let voice = voiceMap[parsed.character];
                 if (!voice) {
                     voice = speakerVoice;
@@ -1644,7 +1645,7 @@
 
     /**
      * 分段函数
-     * 仅听书模式和RP模式会调用此函数
+     * 仅听书模式会调用此函数
      */
     function splitResult(result) {
         if (result.length !== 1) return result;
@@ -1688,7 +1689,7 @@
         let roughText = protectedText
             .replace(/^[\*\-\+]\s+/gm, '')
             .replace(/^#{1,6}\s+/gm, '')
-            .replace(/["“”‘’「」『』\[\]【】{}|]/g, '')
+            .replace(/["“”‘’「」『』\[\]【】{}|/]/g, '')
             .replace(/—+/g, '，') 
             .replace(/([\u4e00-\u9fa5，。！？、；：])\s+(?=[\u4e00-\u9fa5，。！？、；：])/g, '$1')
             .trim();
@@ -1748,142 +1749,79 @@
         });
     }
 
-    function ensureMiniPlayer() {
-        if (miniPlayerEl) return;
-        miniPlayerEl = document.createElement('div');
-        miniPlayerEl.id = 'indextts-mini-player';
-        miniPlayerEl.className = 'indextts-mini-player';
-        miniPlayerEl.innerHTML = `
-            <div class="indextts-mini-inner">
-                <button class="indextts-mini-toggle" type="button" title="暂停/继续">⏯</button>
-                <input class="indextts-mini-progress" type="range" min="0" max="1000" step="1" value="0">
-                <div class="indextts-mini-speed-container">
-                    <span class="indextts-mini-speed-display" title="悬停调节倍速">1.0x</span>
-                    <div class="indextts-mini-speed-popup">
-                        <input type="range" class="indextts-speed-slider" min="0.25" max="5.0" step="0.25" value="1.0">
-                    </div>
-                </div>
-            </div>
-        `;
-        document.body.appendChild(miniPlayerEl);
-        miniPlayerProgress = miniPlayerEl.querySelector('.indextts-mini-progress');
-        miniPlayerToggle = miniPlayerEl.querySelector('.indextts-mini-toggle');
-        const speedDisplay = miniPlayerEl.querySelector('.indextts-mini-speed-display');
-        const speedSlider = miniPlayerEl.querySelector('.indextts-speed-slider');
+    // ==================== 底部播放进度发光条 ====================
+    // 播放音频时，在页面底部显示一条从左到右推进的发光进度线。
+    // 单句模式（流式播放）：透明度跟随进度变化——前段淡入、60%起渐隐，句尾时已接近全透明，下一句归零重新开始时视觉上无跳变，
+    // 整层模式（播缓存）：全程不透明连续推进，延迟等待时停在原地。
+    let bottomProgressEl = null;
+    let bottomBoundAudio = null;
 
-        miniPlayerEl.addEventListener('mouseenter', () => { if (miniPlayerHideTimer) { clearTimeout(miniPlayerHideTimer); miniPlayerHideTimer = null; } });
-        miniPlayerEl.addEventListener('mouseleave', () => { scheduleHideMiniPlayer(); });
+    function ensureBottomProgress() {
+        if (bottomProgressEl) return;
+        bottomProgressEl = document.createElement('div');
+        bottomProgressEl.id = 'indextts-bottom-progress';
+        document.body.appendChild(bottomProgressEl);
+    }
 
-        if (miniPlayerToggle) {
-            miniPlayerToggle.onclick = () => {
-                if (currentPlayback.controller) {
-                    if (currentPlayback.audio && !currentPlayback.audio.paused) { currentPlayback.controller.pause(); }
-                    else { currentPlayback.controller.play(); }
-                } else if (currentPlayback.audio) {
-                    if (currentPlayback.audio.paused) { currentPlayback.audio.play().catch(() => { }); } else { currentPlayback.audio.pause(); }
-                }
-            };
+    /**
+     * 绑定音频到底部进度条（每次播放新的音频会自动解除上一个的绑定）
+     * @param {HTMLAudioElement|null} audio 要跟踪的音频；传 null 清空进度条
+     * @param {Function} [getProgress] 可选，返回 [当前秒数, 总秒数]。
+     *   提供时为"整层模式"：进度跨句连续，延迟等待时停在原地，全程不透明；
+     *   不提供时为"单句模式"：前段淡入、60%后渐隐，句与句之间无跳变。
+     */
+    function attachBottomProgress(audio, getProgress) {
+        ensureBottomProgress();
+        if (bottomBoundAudio && bottomBoundAudio._indexttsBottomUpdate) {
+            bottomBoundAudio.removeEventListener('timeupdate', bottomBoundAudio._indexttsBottomUpdate);
+            delete bottomBoundAudio._indexttsBottomUpdate;
         }
-        if (miniPlayerProgress) {
-            miniPlayerProgress.addEventListener('input', (e) => {
-                const val = parseFloat(e.target.value) || 0;
-                const percent = val / 1000;
-                if (currentPlayback.playlist && currentPlayback.totalDuration > 0) {
-                    if (currentPlayback.controller && currentPlayback.controller.seek) { currentPlayback.controller.seek(percent); }
-                } else if (currentPlayback.audio) {
-                    const audio = currentPlayback.audio;
-                    if (isFinite(audio.duration) && audio.duration > 0) { audio.currentTime = audio.duration * percent; }
-                }
-            });
-        }
-        if (speedSlider && speedDisplay) {
-            speedSlider.addEventListener('input', (e) => {
-                const rate = parseFloat(e.target.value) || 1.0;
-                speedDisplay.textContent = rate.toFixed(1) + 'x';
-                getSettings().speed = rate;
-                if (currentPlayback.audio) { currentPlayback.audio.playbackRate = rate; }
-            });
-            speedSlider.addEventListener('change', () => { saveSettings(); });
-        }
-    }
-
-    function showMiniPlayerForButton(btn) {
-        ensureMiniPlayer();
-        if (!miniPlayerEl) return;
-        if (miniPlayerHideTimer) { clearTimeout(miniPlayerHideTimer); miniPlayerHideTimer = null; }
-        const rect = btn.getBoundingClientRect();
-        const top = rect.bottom + 6 + window.scrollY;
-        const left = rect.left + window.scrollX;
-        miniPlayerEl.style.top = `${top}px`;
-        miniPlayerEl.style.left = `${left}px`;
-        miniPlayerEl.classList.add('indextts-mini-visible');
-        attachMiniPlayerToAudio(currentPlayback.audio);
-    }
-
-    function scheduleHideMiniPlayer() {
-        if (!miniPlayerEl) return;
-        if (miniPlayerHideTimer) { clearTimeout(miniPlayerHideTimer); }
-        miniPlayerHideTimer = setTimeout(() => { if (miniPlayerEl) { miniPlayerEl.classList.remove('indextts-mini-visible'); } }, 200);
-    }
-
-    function setupMiniPlayerHover(playBtn) {
-        if (!playBtn || playBtn.dataset.indexttsHoverBound === 'true') return;
-        playBtn.dataset.indexttsHoverBound = 'true';
-        playBtn.addEventListener('mouseenter', () => { showMiniPlayerForButton(playBtn); });
-        playBtn.addEventListener('mouseleave', () => { scheduleHideMiniPlayer(); });
-    }
-
-    function syncMiniPlayerSpeedUI(rate) {
-        if (!miniPlayerEl) return;
-        const display = miniPlayerEl.querySelector('.indextts-mini-speed-display');
-        const slider = miniPlayerEl.querySelector('.indextts-speed-slider');
-        if (display) display.textContent = rate.toFixed(1) + 'x';
-        if (slider) slider.value = rate;
-    }
-
-    function attachMiniPlayerToAudio(audio, isGlobal = false) {
-        if (!miniPlayerEl || !miniPlayerProgress || !miniPlayerToggle) return;
-        if (miniPlayerBoundAudio && miniPlayerBoundAudio !== audio) {
-            const old = miniPlayerBoundAudio;
-            if (old._indexttsTimeUpdate) old.removeEventListener('timeupdate', old._indexttsTimeUpdate);
-            if (old._indexttsPlay) old.removeEventListener('play', old._indexttsPlay);
-            if (old._indexttsPause) old.removeEventListener('pause', old._indexttsPause);
-            delete old._indexttsTimeUpdate; delete old._indexttsPlay; delete old._indexttsPause;
-        }
-        miniPlayerBoundAudio = audio || null;
+        bottomBoundAudio = audio || null;
         if (!audio) {
-            miniPlayerProgress.value = 0; miniPlayerProgress.disabled = true; miniPlayerToggle.disabled = true; return;
+            // 清空进度条：保持当前宽度淡出，随后无动画归零，避免"从右端带着动画缩回"的观感（与单句模式的渐隐收尾观感一致）
+            bottomProgressEl.style.opacity = '0';
+            setTimeout(() => {
+                if (bottomBoundAudio || !bottomProgressEl) return; 
+                bottomProgressEl.style.transition = 'none';
+                bottomProgressEl.style.width = '0%';
+                bottomProgressEl.style.opacity = '1';
+                requestAnimationFrame(() => {
+                    if (bottomProgressEl) bottomProgressEl.style.transition = '';
+                });
+            }, 350);
+            return;
         }
-        miniPlayerProgress.disabled = false; miniPlayerToggle.disabled = false;
-        const timeUpdate = () => {
-            if (isGlobal && currentPlayback.playlist) {
-                const currentItem = currentPlayback.playlist[currentPlayback.index];
-                if (currentItem) {
-                    const elapsed = currentItem.startOffset + audio.currentTime;
-                    const total = currentPlayback.totalDuration || 1;
-                    const percent = Math.min(1, Math.max(0, elapsed / total));
-                    miniPlayerProgress.value = Math.floor(percent * 1000);
-                    miniPlayerProgress.style.setProperty('--value', `${percent * 100}%`);
-                }
+        const playlistMode = typeof getProgress === 'function';
+        const update = () => {
+            if (!bottomProgressEl || bottomBoundAudio !== audio) return;
+            let elapsed, total;
+            if (playlistMode) {
+                [elapsed, total] = getProgress();
             } else {
-                if (!isFinite(audio.duration) || !audio.duration) return;
-                const percent = audio.currentTime / audio.duration;
-                miniPlayerProgress.value = Math.floor(percent * 1000);
+                elapsed = audio.currentTime;
+                total = audio.duration;
             }
+            if (!isFinite(total) || total <= 0 || !isFinite(elapsed)) {
+                bottomProgressEl.style.width = '0%';
+                return;
+            }
+            const pct = Math.min(1, Math.max(0, elapsed / total));
+            bottomProgressEl.style.width = `${pct * 100}%`;
+            let opacity = 1;
+            if (!playlistMode) {
+                // 单句模式透明度曲线：前 15% 淡入，60% 起线性渐隐至句尾接近透明
+                const fadeIn = Math.min(1, pct / 0.15);
+                const fadeOut = pct < 0.6 ? 1 : Math.max(0, 1 - (pct - 0.6) / 0.4);
+                opacity = fadeIn * fadeOut;
+            }
+            bottomProgressEl.style.opacity = opacity.toFixed(3);
         };
-        const updateToggle = () => { miniPlayerToggle.textContent = audio.paused ? '▶' : '⏸'; };
-        audio._indexttsTimeUpdate = timeUpdate; audio._indexttsPlay = updateToggle; audio._indexttsPause = updateToggle;
-        audio.addEventListener('timeupdate', timeUpdate);
-        audio.addEventListener('play', updateToggle);
-        audio.addEventListener('pause', updateToggle);
-        const settings = getSettings();
-        const currentSpeed = settings.speed || 1.0;
-        audio.playbackRate = currentSpeed;
-        syncMiniPlayerSpeedUI(currentSpeed);
-        updateToggle(); timeUpdate();
+        audio._indexttsBottomUpdate = update;
+        audio.addEventListener('timeupdate', update);
+        update();
     }
 
-    // ==================== Floating Player Window (TTSPlayerWindow) ====================
+    // ==================== 悬浮播放器 ====================
     const TTSPlayerWindow = (() => {
         let container = null; let elements = {};
         let dragInfo = { isDragging: false, startX: 0, startY: 0, initialLeft: 0, initialTop: 0 };
@@ -1976,7 +1914,6 @@
                 elements.speedBtn.textContent = val.toFixed(1) + 'x';
                 elements.speedSlider.value = val;
                 const s = getSettings(); s.speed = val; saveSettings();
-                syncMiniPlayerSpeedUI(val);
                 if (currentPlayback.audio) { currentPlayback.audio.playbackRate = val; }
             };
             elements.speedBtn.addEventListener('click', () => {
@@ -2087,6 +2024,7 @@
             currentTotalDuration = total;
             const percent = total > 0 ? Math.min(1, Math.max(0, elapsed / total)) : 0;
             elements.progress.value = Math.floor(percent * 1000);
+            elements.progress.style.setProperty('--value', `${percent * 100}%`);
             elements.timeCurr.textContent = formatTime(elapsed);
             elements.timeLeft.textContent = '-' + formatTime(total - elapsed);
         }
@@ -2107,7 +2045,8 @@
                 setTimeout(() => {
                     const parent = elements.currText.parentElement;
                     if (elements.currText.scrollWidth > parent.clientWidth + 5) {
-                        elements.currText.innerHTML = `${text} <span style="margin-right:50px;"></span>${text}`;
+                    const safeText = escapeHtml(text);
+                    elements.currText.innerHTML = `${safeText} <span style="margin-right:50px;"></span>${safeText}`;
                         elements.currText.classList.add('marquee');
                         const duration = Math.max(10, Math.floor(elements.currText.scrollWidth / 40));
                         elements.currText.style.animationDuration = `${duration}s`;
@@ -2199,11 +2138,11 @@
         const skipCount = settings.streamingSkipCount || 1;
         let currentInferIndex = 0; let currentPlayIndex = 0;
         let isPlaying = false; let currentAudio = null;
-        let inferDone = false; let cachedCount = 0;
+        let inferDone = false;
+        let streamCompletedDuration = 0; // 已播完句子的累计时长
         const sessionId = Date.now();
 
         const playNextAudio = async () => {
-            console.log('[IndexTTS2] Streaming: playNextAudio called, currentPlayIndex=' + currentPlayIndex + ', list.length=' + list.length);
             const waitForContent = () => {
                 return new Promise(resolve => {
                     const checkInterval = setInterval(() => {
@@ -2215,14 +2154,13 @@
             };
             const waitResult = await waitForContent();
             if (waitResult === 'aborted') {
-                console.log('[IndexTTS2] Streaming: 由于会话更改，播放已中止');
                 return;
             }
             if (waitResult === 'done' || currentPlayIndex >= list.length) {
-                console.log('[IndexTTS2] Streaming: playback finished');
                 AmbientPlayer.stop();
                 if (typeof currentPlayback.stop === 'function') currentPlayback.stop();
                 clearPlayingInMessage(msg);
+                attachBottomProgress(null);
                 return;
             }
 
@@ -2250,10 +2188,10 @@
                 if (nameEl) displayChar = nameEl.textContent.trim();
             }
             TTSPlayerWindow.updateInfo({ name: displayChar, text: item.text, avatarUrl: avatarEl ? avatarEl.src : null });
-            attachMiniPlayerToAudio(currentAudio, true);
-            console.log('[IndexTTS2][Streaming] Ambient playScene: ' + item.scene);
+            attachBottomProgress(currentAudio);
             AmbientPlayer.playScene(item.scene || null);
             currentAudio.onended = () => {
+                if (isFinite(currentAudio.duration) && currentAudio.duration > 0) streamCompletedDuration += currentAudio.duration;        
                 setLinePlayingByEncoded(msg, encT, encC, false);
                 
                 const settings = getSettings();
@@ -2283,6 +2221,13 @@
 
                 currentPlayIndex++; playNextAudio();
             };
+            
+            currentAudio.addEventListener('timeupdate', () => {
+                if (isFinite(currentAudio.duration) && currentAudio.duration > 0) {
+                    TTSPlayerWindow.updateProgress(streamCompletedDuration + currentAudio.currentTime, streamCompletedDuration + currentAudio.duration);
+                }
+            });
+            
             try { await currentAudio.play(); } catch (e) {
                 if (e.name === 'NotAllowedError') { if (window.toastr) window.toastr.warning('浏览器已拦截自动播放，请先点击页面任意处'); return; }
                 currentPlayIndex++; playNextAudio();
@@ -2290,10 +2235,8 @@
         };
 
         const inferLoop = async () => {
-            console.log('[IndexTTS2] Streaming: starting inferLoop, lines.length=' + lines.length + ', skipCount=' + skipCount);
             while (currentInferIndex < lines.length) {
                 if (isPlaying && currentPlayback.sessionId !== sessionId) {
-                    console.log('[IndexTTS2] Streaming: inferLoop stopped due to session mismatch');
                     return;
                 }
                 const line = lines[currentInferIndex];
@@ -2301,19 +2244,16 @@
                 try {
                     const record = await ensureAudioRecord({ text: line.text, character: line.character, voice: line.voice, emotion: line.emotion });
                     if (!record) { currentInferIndex++; continue; }
-                    if (record.isCached) cachedCount++;
                     const blobUrl = URL.createObjectURL(record.blob);
                     const newItem = { text: line.text, character: line.character, scene: line.scene || null, voice: line.voice, hash: record.hash, blobUrl };
                     list.push(newItem);
                     audioCache[mesId] = list;
-                    console.log('[IndexTTS2] Streaming: added item, list.length=' + list.length);
                     if (window.toastr && !isSilent) {
                         const progress = Math.round(((currentInferIndex + 1) / lines.length) * 100);
                         const msg = `推理进度: ${currentInferIndex + 1}/${lines.length} (${progress}%)`;
-                        try { window.toastr.info(msg); } catch (e) { console.warn('[IndexTTS2] toastr error:', e); }
+                        try { window.toastr.info(msg); } catch (e) { console.warn('[IndexTTS2] 弹窗通知失败:', e); }
                     }
                     if (list.length >= skipCount && !isPlaying) {
-                        console.log('[IndexTTS2] Streaming: triggering playback, list.length=' + list.length + ', skipCount=' + skipCount);
                         isPlaying = true; currentPlayIndex = 0; currentPlayback.sessionId = sessionId;
                         currentPlayback.controller = {
                             pause: () => { if (currentAudio) currentAudio.pause(); },
@@ -2328,7 +2268,7 @@
                         TTSPlayerWindow.show(msg, currentPlayback.controller);
                         playNextAudio();
                     }
-                } catch (e) { console.error('[IndexTTS2] Streaming infer error:', e); }
+                } catch (e) { console.error('[IndexTTS2] 流式推理失败:', e); }
                 currentInferIndex++;
                 if (currentInferIndex >= lines.length && !isPlaying && list.length > 0) {
                     inferDone = true; isPlaying = true; currentPlayIndex = 0; currentPlayback.sessionId = sessionId;
@@ -2364,7 +2304,6 @@
             } else { return audioCache[mesId]; }
         }
         if (inferenceLocks.has(mesId)) {
-            if (!isSilent && window.toastr) window.toastr.warning('正在推理中，请稍候...');
             return audioCache[mesId] || [];
         }
         inferenceLocks.add(mesId);
@@ -2383,7 +2322,12 @@
             const list = [];
             const unvoicedCount = lines.filter(l => !l.voice).length;
             if (!lines.length) {
-                if (!isSilent && window.toastr) window.toastr.warning('未在消息中发现符合格式的 [角色] 文本，请检查是否为 GAL 模式及剧本格式');
+                if (!isSilent && window.toastr) {
+                    const modeHint = settings.parsingMode === 'rp' ? '未发现引号对话内容，请检查RP模式及消息文本'
+                        : settings.parsingMode === 'audiobook' ? '未发现可朗读的文本内容'
+                        : '未在消息中发现符合格式的 [角色] 文本，请检查是否为 GAL 模式及剧本格式';
+                    window.toastr.warning(modeHint);
+                }
                 return [];
             } else if (unvoicedCount === lines.length) {
                 if (!isSilent && window.toastr) window.toastr.warning('发现角色对话但均未在配置表格中关联配音，请先点击配置绑定音色');
@@ -2394,27 +2338,17 @@
                 if (window.toastr && !isSilent) { window.toastr.info(`流式推理播放模式已启用（每推理 ${skipCount} 句后开始播放）`); }
                 return await streamInferAndPlay(msg, lines, triggerBtn, isSilent);
             }
-            let cachedCount = 0;
+
             for (const line of lines) {
                 try {
                     if (!line.voice) continue;
                     const record = await ensureAudioRecord({ text: line.text, character: line.character, voice: line.voice, emotion: line.emotion });
                     if (!record) continue;
-                    if (record.isCached) cachedCount++;
                     const blobUrl = URL.createObjectURL(record.blob);
                     list.push({ text: line.text, character: line.character, scene: line.scene || null, voice: line.voice, hash: record.hash, blobUrl });
-                } catch (e) { console.error('[IndexTTS2] inferMessageAudios line error:', e); }
+                } catch (e) { console.error('[IndexTTS2] 单句推理失败:', e); }
             }
             audioCache[mesId] = list;
-            if (list.length) {
-                const playBtn = msg.querySelector('.indextts-play');
-                if (playBtn) playBtn.classList.add('indextts-prepared');
-                if (window.toastr && !isSilent) {
-                    let msgStr = cachedCount === list.length ? `已从缓存装载 ${list.length} 句音频` : `已推理${list.length} 句音频`;
-                    if (unvoicedCount > 0 && unvoicedCount < lines.length) { window.toastr.success(`${msgStr}，${unvoicedCount} 句未配置配音已跳过`); }
-                    else { window.toastr.success(msgStr); }
-                }
-            }
             return list;
         } finally {
             inferenceLocks.delete(mesId);
@@ -2432,16 +2366,15 @@
         if (!msg) return;
         const mesId = getMessageId(msg);
         if (!mesId) return;
-        if (inferenceLocks.has(mesId)) { if (window.toastr) window.toastr.warning('正在推理中，请稍候...'); return; }
+        if (inferenceLocks.has(mesId)) { return; }
 
         (async () => {
             let queue = audioCache[mesId] || [];
             if (!queue.length) {
                 await inferMessageAudios(msg, null, true);
                 queue = audioCache[mesId] || [];
-                if (!queue.length) { if (window.toastr) window.toastr.warning('无储备音频，请先点击推理！'); return; }
+                if (!queue.length) { return; }
             }
-            if (window.toastr) window.toastr.info('正在准备播放列表...');
             if (typeof currentPlayback.stop === 'function') { currentPlayback.stop(); } else if (currentPlayback.audio) { try { currentPlayback.audio.pause(); } catch (e) { } }
             clearPlayingInMessage(currentPlayback.msg);
 
@@ -2453,10 +2386,11 @@
                 a.onerror = () => resolve(0);
                 setTimeout(() => resolve(0), 1000);
             });
-
+            // 并行获取所有句子的时长（blob 均为本地资源，无带宽压力），避免逐句串行等待
+            const durations = await Promise.all(queue.map(item => loadDuration(item.blobUrl)));
             for (let i = 0; i < queue.length; i++) {
                 const item = queue[i];
-                const dur = await loadDuration(item.blobUrl);
+                const dur = durations[i];
                 playlist.push({ ...item, index: i, duration: dur, startOffset: totalDuration });
                 totalDuration += dur;
             }
@@ -2480,10 +2414,15 @@
 
             const playTrack = (index, seekTime = 0) => {
                 if (currentPlayback.sessionId !== currentQueueId) return;
-                if (index >= playlist.length) { currentPlayback.stop(); clearPlayingInMessage(msg); return; }
+                if (index >= playlist.length) {
+                    currentPlayback.stop();
+                    clearPlayingInMessage(msg);
+                    attachBottomProgress(null);
+                    return;
+                }
                 currentIndex = index;
                 const item = playlist[index];
-                if (currentAudio) { currentAudio.pause(); currentAudio.onended = null; currentAudio.onerror = null; if (currentAudio._indexttsTimeUpdate) currentAudio.removeEventListener('timeupdate', currentAudio._indexttsTimeUpdate); currentAudio.src = ''; }
+                if (currentAudio) { currentAudio.pause(); currentAudio.onended = null; currentAudio.onerror = null; currentAudio.src = ''; }
                 const audio = new Audio(item.blobUrl);
                 currentAudio = audio;
                 currentPlayback.audio = audio;
@@ -2493,7 +2432,6 @@
                 const vol = parseFloat(settings.volume || 1.0);
                 audio.volume = Math.max(0, Math.min(1, vol));
                 audio.playbackRate = parseFloat(settings.speed || 1.0);
-                console.log('[IndexTTS2][Ambient] playTrack index=' + index + ' scene=' + item.scene + ' dirHandle=' + (AmbientPlayer.getDirHandle() ? 'SET' : 'NULL'));
                 if (getSettings().ambientLoopByScene) {
                     if (index === item.sceneSegStart) {
                         console.log('[IndexTTS2][Ambient] LoopByScene: START scene=' + item.scene + ' seg=[' + item.sceneSegStart + ',' + item.sceneSegEnd + ']');
@@ -2510,7 +2448,8 @@
                 let displayChar = item.character || 'Unknown';
                 if (displayChar.toLowerCase() === 'narrator' && avatarEl) { const nameEl = msg.querySelector('.ch_name'); if (nameEl) displayChar = nameEl.textContent.trim(); }
                 TTSPlayerWindow.updateInfo({ name: displayChar, text: item.text, avatarUrl: avatarEl ? avatarEl.src : null });
-                attachMiniPlayerToAudio(audio, true);
+                attachBottomProgress(audio, () => [item.startOffset + audio.currentTime, totalDuration]);
+
 
                 audio.addEventListener('timeupdate', () => {
                     const elapsed = item.startOffset + audio.currentTime;
@@ -2546,13 +2485,11 @@
                         playTrack(index + 1);
                     }
                 };
-                audio.onerror = () => { console.error('[IndexTTS2] Track error'); playTrack(index + 1); };
+                audio.onerror = () => { console.error('[IndexTTS2] 音频轨道错误'); playTrack(index + 1); };
                 audio.play().catch(e => {
-                    console.error('[IndexTTS2] Auto-play block?', e);
+                    console.error('[IndexTTS2] 自动播放被阻止', e);
                     if (e.name === 'NotAllowedError') {
                         if (window.toastr) window.toastr.warning('浏览器已拦截自动播放，请先点击页面任意处，或手动点击播放按钮');
-                        const playBtn = msg.querySelector('.indextts-play');
-                        if (playBtn) playBtn.classList.add('indextts-prepared');
                         return;
                     }
                     playTrack(index + 1);
@@ -2588,10 +2525,9 @@
         if (!msg) return;
         const mesId = getMessageId(msg);
         if (!mesId) return;
-        if (currentPlayback.audio && !currentPlayback.audio.paused) { console.log('[IndexTTS2] AutoPlay: skipped, audio already playing'); return; }
+        if (currentPlayback.audio && !currentPlayback.audio.paused) { return; }
         const queue = audioCache[mesId] || [];
-        if (!queue.length) { console.log('[IndexTTS2] AutoPlay: no audio in cache for', mesId); return; }
-        console.log('[IndexTTS2] AutoPlay: starting playback for', mesId);
+        if (!queue.length) { return; }
         try { playMessageQueue(msg, null); } catch (e) { console.warn('[IndexTTS2] AutoPlay: playMessageQueue threw synchronously:', e); }
     }
 
@@ -2609,7 +2545,7 @@
         });
     }
 
-    // ==================== Update Checker ====================
+    // ==================== 更新检查 ====================
     const UPDATE_CHECKER = (() => {
         const REMOTE_MANIFEST_URL = "https://raw.githubusercontent.com/Thirteen-Moons/ST-indexTTS2-X-Player/main/manifest.json";
         const CHECK_INTERVAL_HOURS = 24;
@@ -2620,7 +2556,7 @@
         async function getCurrentVersion() {
             if (currentVersion) return currentVersion;
             try {
-                const response = await fetch(`${extensionFolderPath}manifest.json`, { cache: 'no-cache' });
+                const response = await fetchWithTimeout(`${extensionFolderPath}manifest.json`, { cache: 'no-cache' });
                 if (response.ok) {
                     const data = await response.json();
                     currentVersion = data.version || '1.0.0';
@@ -2633,7 +2569,7 @@
             return currentVersion;
         }
 
-        async function checkUpdate() {
+        async function checkUpdate(retryCount = 1) {
             try {
                 const lastCheck = localStorage.getItem('indextts_last_update_check');
                 const now = Date.now();
@@ -2650,7 +2586,7 @@
 
                 const [localVer, response] = await Promise.all([
                     getCurrentVersion(),
-                    fetch(REMOTE_MANIFEST_URL, { method: 'GET', cache: 'no-cache' })
+                    fetchWithTimeout(REMOTE_MANIFEST_URL, { method: 'GET', cache: 'no-cache' })
                 ]);
                 
                 if (!response.ok) return;
@@ -2685,6 +2621,10 @@
                     updateUI();
                 }
             } catch (e) {
+                if (retryCount > 0 && e.message !== 'Request timeout') {
+                    setTimeout(() => checkUpdate(retryCount - 1), 1000);
+                    return;
+                }
                 console.warn('[IndexTTS2] 更新检查失败:', e);
             }
         }
@@ -2734,7 +2674,7 @@
 
         return { checkUpdate, scheduleCheck, hasUpdate: () => hasUpdate };
     })();   
-    // ==================== Settings Panel ====================
+    // ==================== 插件设置面板 ====================
     function injectSettingsPanel() {
         if (document.getElementById('indextts-settings')) {
             const settings = getSettings();
@@ -2831,7 +2771,7 @@
                             <div class="indextts-module-header">🎵 场景音效</div>
                             <div class="indextts-setting-row" style="font-size:0.85em; opacity:0.7;">请在TTS后端pjy目录放置场景音频，确保文件名与标签名一致。</div>
                             <div class="indextts-setting-row"><label>场景音音量</label><input type="range" id="indextts-ambient-volume" class="indextts-slider" min="0" max="1" step="0.05" value="${settings.ambientSoundVolume ?? 0.4}"><span id="indextts-ambient-volume-val">${((settings.ambientSoundVolume ?? 0.4) * 100).toFixed(0)}%</span></div>
-                            <div class="indextts-setting-row"><label>淡入淡出</label><select id="indextts-ambient-fade" class="text_pole"><option value="0"${(settings.ambientFadeDuration ?? 0) == 0 ? ' selected' : ''}>关闭</option><option value="500"${(settings.ambientFadeDuration ?? 0) == 500 ? ' selected' : ''}>0.5 秒</option><option value="1000"${(settings.ambientFadeDuration ?? 0) == 1000 ? ' selected' : ''}>1 秒</option><option value="1500"${(settings.ambientFadeDuration ?? 0) == 1500 ? ' selected' : ''}>1.5 秒</option><option value="2000"${(settings.ambientFadeDuration ?? 0) == 2000 ? ' selected' : ''}>2 秒</option><option value="3000"${(settings.ambientFadeDuration ?? 0) == 3000 ? ' selected' : ''}>3 秒</option></select></div>
+                            <div class="indextts-setting-row"><label>淡入淡出</label><select id="indextts-ambient-fade" class="text_pole"><option value="0"${(settings.ambientFadeDuration ?? 0) == 0 ? ' selected' : ''}>关闭</option><option value="100"${(settings.ambientFadeDuration ?? 0) == 100 ? ' selected' : ''}>0.1 秒</option><option value="200"${(settings.ambientFadeDuration ?? 0) == 200 ? ' selected' : ''}>0.2 秒</option><option value="300"${(settings.ambientFadeDuration ?? 0) == 300 ? ' selected' : ''}>0.3 秒</option><option value="400"${(settings.ambientFadeDuration ?? 0) == 400 ? ' selected' : ''}>0.4 秒</option><option value="500"${(settings.ambientFadeDuration ?? 0) == 500 ? ' selected' : ''}>0.5 秒</option><option value="1000"${(settings.ambientFadeDuration ?? 0) == 1000 ? ' selected' : ''}>1 秒</option><option value="1500"${(settings.ambientFadeDuration ?? 0) == 1500 ? ' selected' : ''}>1.5 秒</option><option value="2000"${(settings.ambientFadeDuration ?? 0) == 2000 ? ' selected' : ''}>2 秒</option><option value="3000"${(settings.ambientFadeDuration ?? 0) == 3000 ? ' selected' : ''}>3 秒</option></select></div>
                             <div class="indextts-setting-row" style="font-size:0.85em; opacity:0.7;">音效文件命名需与场景名称一致，支持 .mp3 / .wav / .ogg / .m4a</div>
                             <div class="indextts-setting-row checkbox-row"><label for="indextts-ambient-loop-scene">同场景下循环播放场景音</label><input type="checkbox" id="indextts-ambient-loop-scene" ${settings.ambientLoopByScene ? 'checked' : ''}></div>
                         </div>
@@ -2846,8 +2786,6 @@
 
         const bindInput = (id, field) => { const el = panel.querySelector(id); if (el) { el.oninput = el.onchange = (e) => { const s = getSettings(); s[field] = e.target.value; saveSettings(); }; } };
         bindInput('#indextts-url', 'apiUrl'); bindInput('#indextts-clone-url', 'cloningUrl'); bindInput('#indextts-voice-list-url', 'voiceListUrl'); bindInput('#indextts-model', 'model');
-
-        const bindSelect = (id, field) => { const el = panel.querySelector(id); if (el) { el.onchange = (e) => { const s = getSettings(); s[field] = e.target.value; saveSettings(); refreshAllMessages(); }; } };
 
         const parsingModeSelect = panel.querySelector('#indextts-parsing-mode');
         if (parsingModeSelect) {
@@ -2983,36 +2921,6 @@
         const bindPrompt = (id, field) => { const el = panel.querySelector(id); if (el) { el.oninput = el.onchange = (e) => { const s = getSettings(); if (!s.promptInjection || typeof s.promptInjection !== 'object') { s.promptInjection = JSON.parse(JSON.stringify(defaultSettings.promptInjection)); } s.promptInjection[field] = e.target.type === 'checkbox' ? e.target.checked : e.target.value; saveSettings(); }; } };
         bindPrompt('#indextts-prompt-enable', 'enabled'); bindPrompt('#indextts-prompt-depth', 'depth'); bindPrompt('#indextts-prompt-role', 'role'); bindPrompt('#indextts-prompt-content', 'content');
 
-        const ambientChooseBtn = panel.querySelector('#indextts-ambient-choose');
-        if (ambientChooseBtn) {
-            ambientChooseBtn.onclick = async () => {
-                if (!window.showDirectoryPicker) { if (window.toastr) window.toastr.error('浏览器不支持目录选择'); return; }
-                try {
-                    const h = await window.showDirectoryPicker();
-                    await AmbientPlayer.setDirHandle(h);
-                    await AmbientPlayer.requestPermission();
-                    const el = panel.querySelector('#indextts-ambient-path');
-                    if (el) el.value = h.name;
-                    const s = getSettings(); s.ambientSoundPath = h.name; saveSettings();
-                    if (window.toastr) window.toastr.success('背景音目录已设置: ' + h.name);
-                } catch (e) { if (e.name !== 'AbortError') console.error('[IndexTTS2][Ambient]', e); }
-            };
-            const existingH = AmbientPlayer.getDirHandle();
-            const ambPathEl = panel.querySelector('#indextts-ambient-path');
-            const s = getSettings();
-            if (existingH && ambPathEl) { ambPathEl.value = existingH.name; } else if (s.ambientSoundPath && ambPathEl) { ambPathEl.value = s.ambientSoundPath; }
-            const ambAuthBtn = panel.querySelector('#indextts-ambient-auth');
-            if (ambAuthBtn) {
-                if (existingH) { ambAuthBtn.style.display = 'inline-block'; } else if (s.ambientSoundPath) { ambAuthBtn.style.display = 'inline-block'; }
-                ambAuthBtn.onclick = async () => {
-                    if (existingH) {
-                        const ok = await AmbientPlayer.requestPermission();
-                        if (ok) { ambAuthBtn.style.display = 'none'; if (window.toastr) window.toastr.success('背景音目录授权成功'); }
-                        else { if (window.toastr) window.toastr.error('授权失败，请重新选择目录'); }
-                    } else if (s.ambientSoundPath) { if (window.toastr) window.toastr.info('请重新选择背景音目录以获取权限'); ambientChooseBtn.click(); }
-                };
-            }
-        }
         const ambVolSlider = panel.querySelector('#indextts-ambient-volume');
         if (ambVolSlider) { ambVolSlider.oninput = (e) => { const v = parseFloat(e.target.value); AmbientPlayer.setVolume(v); const disp = panel.querySelector('#indextts-ambient-volume-val'); if (disp) disp.textContent = Math.round(v * 100) + '%'; }; }
         const ambFadeSelect = panel.querySelector('#indextts-ambient-fade');
@@ -3134,7 +3042,7 @@
             const list = await AudioStorage.getAllAudios();
             const countEl = document.getElementById('indextts-cache-count');
             if (countEl) { countEl.textContent = String(list.length || 0); }
-        } catch (e) { console.warn('[IndexTTS2] updateAudioPoolStats error:', e); }
+        } catch (e) { console.warn('[IndexTTS2] 更新缓存统计失败:', e); }
     }
 
     const IMPORT_FILENAME_REGEX = /^\[(.*?)\]_(.+)_([a-f0-9]{6,})\.(?:wav|mp3|ogg)$/i;
@@ -3147,7 +3055,7 @@
                     if (n.endsWith('.wav') || n.endsWith('.mp3') || n.endsWith('.ogg')) list.push(handle);
                 } else if (handle.kind === 'directory') { await getAllAudioFilesFromDir(handle, list); }
             }
-        } catch (e) { console.warn('[IndexTTS2] getAllAudioFilesFromDir error:', e); }
+        } catch (e) { console.warn('[IndexTTS2] 扫描目录失败:', e); }
         return list;
     }
 
@@ -3182,13 +3090,13 @@
                         await AudioStorage.saveAudio(record);
                         imported++;
                     }
-                } catch (e) { console.warn('[IndexTTS2] import file error:', f.name, e); }
+                } catch (e) { console.warn('[IndexTTS2] 导入文件失败:', f.name, e); }
                 if (window.toastr && (i + 1) % 10 === 0) { window.toastr.info(`正在导入: ${i + 1}/${fileHandles.length}`); }
             }
             if (window.toastr) window.toastr.success(`同步完成：新增 ${imported} 条，跳过已存在${skipped} 条`);
         } catch (e) {
             if (e.name === 'AbortError') return;
-            console.error('[IndexTTS2] importFromLocalDirectory error:', e);
+            console.error('[IndexTTS2] 从本地目录导入出错:', e);
             if (window.toastr) window.toastr.error('导入失败: ' + e.message);
         }
     }
@@ -3216,64 +3124,57 @@
             }
             if (window.toastr) window.toastr.success(`导出完成，共 ${records.length} 条`);
         } catch (e) {
-            console.error('[IndexTTS2] exportAudioCacheToFolder error:', e);
+            console.error('[IndexTTS2] 导出音频缓存到文件夹出错:', e);
             if (window.toastr) window.toastr.error('导出失败: ' + e.message);
         }
     }
 
-    // ==================== Event Listeners ====================
+    // ==================== 事件监听 ====================
     function setupEventListeners() {
         try {
             const eventSource = window.eventSource || window.SillyTavern?.getContext?.()?.eventSource;
             const event_types = window.event_types || window.SillyTavern?.getContext?.()?.event_types;
-            if (eventSource && event_types) {
-                if (event_types.MESSAGE_EDITED) {
-                    eventSource.on(event_types.MESSAGE_EDITED, (mesId) => {
-                        console.log('[IndexTTS2] MESSAGE_EDITED:', mesId);
-                        setTimeout(() => {
-                            const msg = document.querySelector(`.mes[mesid="${mesId}"]`);
-                            if (msg) {
-                                const mesText = msg.querySelector('.mes_text');
-                                if (mesText) delete mesText.dataset.indexttsInjected;
-                                injectMessageButtons(msg);
-                                injectInlineButtons(msg, true);
-                            }
-                        }, 100);
-                    });
-                }
-                if (event_types.CHARACTER_MESSAGE_RENDERED) {
-                    eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, () => {
-                        console.log('[IndexTTS2] CHARACTER_MESSAGE_RENDERED');
-                        setTimeout(() => polling(), 100);
-                    });
-                }
-                if (event_types.MESSAGE_RECEIVED) {
-                    eventSource.on(event_types.MESSAGE_RECEIVED, async (mesId) => {
-                        console.log('[IndexTTS2] MESSAGE_RECEIVED', mesId);
-                        setTimeout(async () => {
-                            polling();
-                            const settings = getSettings();
-                            if (settings.autoInference) {
-                                let msg = null;
-                                if (mesId) { msg = document.querySelector(`.mes[mesid="${mesId}"]`); }
-                                if (!msg) { const all = document.querySelectorAll('.mes[is_user="false"]'); if (all.length) msg = all[all.length - 1]; }
-                                if (msg) {
-                                    console.log('[IndexTTS2] Auto-inferring for message', mesId);
-                                    await inferMessageAudios(msg, null, true);
-                                    if (settings.autoPlay) { await autoPlayMessage(msg); }
-                                }
-                            }
-                        }, 500);
-                    });
-                }
-                console.log('[IndexTTS2] Event listeners registered');
+            if (!eventSource || !event_types) {
+                return;
             }
-        } catch (e) { console.log('[IndexTTS2] Event source not available, using polling only'); }
 
-        try {
-            const eventSource = window.eventSource || window.SillyTavern?.getContext?.()?.eventSource;
-            const event_types = window.event_types || window.SillyTavern?.getContext?.()?.event_types;
-            if (eventSource && event_types && event_types.CHAT_COMPLETION_PROMPT_READY) {
+            if (event_types.MESSAGE_EDITED) {
+                eventSource.on(event_types.MESSAGE_EDITED, (mesId) => {
+                    setTimeout(() => {
+                        const msg = document.querySelector(`.mes[mesid="${mesId}"]`);
+                        if (msg) {
+                            const mesText = msg.querySelector('.mes_text');
+                            if (mesText) delete mesText.dataset.indexttsInjected;
+                            injectMessageButtons(msg);
+                            injectInlineButtons(msg, true);
+                        }
+                    }, 100);
+                });
+            }
+            if (event_types.CHARACTER_MESSAGE_RENDERED) {
+                eventSource.on(event_types.CHARACTER_MESSAGE_RENDERED, () => {
+                    setTimeout(() => polling(), 100);
+                });
+            }
+            if (event_types.MESSAGE_RECEIVED) {
+                eventSource.on(event_types.MESSAGE_RECEIVED, async (mesId) => {
+                    setTimeout(async () => {
+                        polling();
+                        const settings = getSettings();
+                        if (settings.autoInference) {
+                            let msg = null;
+                            if (mesId) { msg = document.querySelector(`.mes[mesid="${mesId}"]`); }
+                            if (!msg) { const all = document.querySelectorAll('.mes[is_user="false"]'); if (all.length) msg = all[all.length - 1]; }
+                            if (msg) {
+                                await inferMessageAudios(msg, null, true);
+                                if (settings.autoPlay) { await autoPlayMessage(msg); }
+                            }
+                        }
+                    }, 500);
+                });
+            }
+
+            if (event_types.CHAT_COMPLETION_PROMPT_READY) {
                 eventSource.on(event_types.CHAT_COMPLETION_PROMPT_READY, (eventData) => {
                     const settings = getSettings();
                     const config = settings.promptInjection;
@@ -3284,70 +3185,93 @@
                         if (index < 0) index = 0;
                         if (index > eventData.chat.length) index = eventData.chat.length;
                         eventData.chat.splice(index, 0, injection);
-                        console.log(`[IndexTTS2] Injected prompt at depth ${depth} (index${index})`, injection);
                     }
                 });
             }
-        } catch (e) { console.error('[IndexTTS2] Prompt injection setup error:', e); }
+            // 切换聊天时清理播放状态：停掉旧聊天的音频/环境音、释放内存中的 blobUrl，并收起悬浮播放器和底部进度条
+            if (event_types.CHAT_CHANGED) {
+                eventSource.on(event_types.CHAT_CHANGED, () => {
+                    clearMemoryAudioCache();
+                    AmbientPlayer.stop();
+                    TTSPlayerWindow.hide();
+                    attachBottomProgress(null);
+                    inferenceLocks.clear(); 
+                });
+            }            
+        } catch (e) {
+            console.error('[IndexTTS2] Event listener setup error:', e);
+        }
     }
 
+    // ==================== MutationObserver 即时响应 ====================
+    let observerSuppressed = false;
+    let pollPending = false;
+    let chatObserver = null;
+
     function polling() {
-        ensureCssLoaded();
-        injectSettingsPanel();
-        document.querySelectorAll('.mes[is_user="false"]').forEach(msg => {
-            injectMessageButtons(msg);
-            const mesText = msg.querySelector('.mes_text');
-            if (mesText && mesText.dataset.indexttsInjected === 'true') {
-                if (!mesText.querySelector('.indextts-inline-play')) { delete mesText.dataset.indexttsInjected; }
-            }
-            injectInlineButtons(msg);
-            const playBtn = msg.querySelector('.indextts-play');
-            if (playBtn && !playBtn.classList.contains('indextts-prepared') && !playBtn.dataset.indexttsPollingCheck) {
-                playBtn.dataset.indexttsPollingCheck = 'true';
-                const mesId = getMessageId(msg);
-                if (mesId && audioCache[mesId] && audioCache[mesId].length > 0) {
-                    playBtn.classList.add('indextts-prepared');
-                } else {
-                    const lines = collectVNLinesFromMessage(msg);
-                    if (lines.length > 0) {
-                        const firstLine = lines[0];
-                        if (firstLine.voice) {
-                            (async () => {
-                                const settings = getSettings();
-                                const normVoice = ensureWavSuffix(firstLine.voice || settings.defaultVoice);
-                                const speed = parseFloat(settings.speed || 1.0) || 1.0;
-                                const volume = parseFloat(settings.volume || 1.0) || 1.0;
-                                const hash = await generateHash(firstLine.character || 'Unknown', normVoice, firstLine.text, speed, volume, firstLine.emotion);
-                                const cached = await AudioStorage.getAudio(hash);
-                                if (cached && cached.blob) { playBtn.classList.add('indextts-prepared'); }
-                            })();
-                        }
+        observerSuppressed = true;
+        try {
+            injectSettingsPanel();
+            document.querySelectorAll('.mes[is_user="false"]').forEach(msg => {
+                injectMessageButtons(msg);
+                const mesText = msg.querySelector('.mes_text');
+                if (mesText && mesText.dataset.indexttsInjected === 'true') {
+                    if (!mesText.querySelector('.indextts-inline-play')) {
+                        delete mesText.dataset.indexttsInjected;
                     }
                 }
+                injectInlineButtons(msg);
+            });
+        } finally {
+            setTimeout(() => {
+                observerSuppressed = false;
+            }, 0);
+        }
+    }
+
+    function scheduleObserverPolling() {
+        // 节流：变化风暴期间最多 300ms 触发一次全量 polling
+        if (observerSuppressed || pollPending) return;
+        pollPending = true;
+        setTimeout(() => {
+            pollPending = false;
+            polling();
+        }, 300);
+    }
+
+    function setupMutationObserver() {
+        const target = document.getElementById('chat');
+        if (!target) {
+            // DOM 未就绪：5 秒后重试（最多 3 次），仍失败则放弃，退化为纯轮询
+            if (!setupMutationObserver._retries) setupMutationObserver._retries = 0;
+            if (setupMutationObserver._retries < 3) {
+                setupMutationObserver._retries++;
+                console.warn('[IndexTTS2] #chat 未找到，5秒后重试 (', setupMutationObserver._retries, '/3 )');
+                setTimeout(setupMutationObserver, 5000);
+            } else {
+                console.warn('[IndexTTS2] #chat 持续未找到，放弃观察器，仅使用轮询');
             }
-        });
+            return;
+        }
+        try {
+            chatObserver = new MutationObserver(scheduleObserverPolling);
+            chatObserver.observe(target, { childList: true, subtree: true });
+            console.log('[IndexTTS2] MutationObserver 已启用');
+        } catch (e) {
+            console.warn('[IndexTTS2] MutationObserver 创建失败，继续使用轮询:', e);
+        }
     }
 
     function init() {
-        console.log('[IndexTTS2] v12 Initializing...');
         const loadedSettings = getSettings();
-        console.log('[IndexTTS2] Loaded settings:', loadedSettings);
         LocalRepo.init();
         AmbientPlayer.init();
         setupEventListeners();
-        setInterval(polling, 2000);
+        setInterval(polling, 15000); // 低频兜底：覆盖观察器盲区
+        setupMutationObserver();
         polling();
-        console.log('[IndexTTS2] v12 Ready - Stable Edition');
         UPDATE_CHECKER.scheduleCheck();//检查更新
-        setTimeout(async () => {
-            try {
-                const list = await AudioStorage.getAllAudios();
-                if (!list || list.length === 0) {
-                    console.log('[IndexTTS2] 缓存池为空，建议在设置中执行「扫描本地目录同步至缓存」以节省推理算力');
-                    if (window.toastr) window.toastr.info('缓存池为空，建议执行「扫描本地目录同步至缓存」以节省算力');
-                }
-            } catch (e) { }
-        }, 800);
+        updateAudioPoolStats();
     }
 
     if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); }

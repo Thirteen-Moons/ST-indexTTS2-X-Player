@@ -2,10 +2,10 @@
 Copyright (c) 2026 Thirteen-Moons
 Licensed under AGPL-3.0; see LICENSE for full terms
 Derivative works must retain attribution to Thirteen-Moons
-v1.2.6
+v1.2.7
 ========================= */
 
-/* IndexTTS2 Style - SillyTavern Native UI */
+/* IndexTTS2 样式 - 适配 SillyTavern 原生界面 */
 
 /* ============================================================
    Clickable Dialogue Text (可点击对话)
@@ -127,7 +127,6 @@ v1.2.6
     flex-direction: column;
     width: 360px;
     min-width: 280px;
-    resize: horizontal;
     overflow: visible;
     border-radius: 18px;
     background: linear-gradient(
@@ -156,39 +155,7 @@ v1.2.6
     transform: translateY(0);
 }
 
-/* ============================================================
-   Floating Player Window - 移动端适配（顶部居中）
-   ============================================================ */
-@media (max-width: 768px) {
-    /*强制恢复 fixed 定位的包含块（修复移动端 fixed 失效）*/
-    html, body {
-    transform: none !important;
-    perspective: none !important;
-    filter: none !important;
-    contain: none !important;
-    }
-
-    .indextts-player-window {
-        width: calc(100vw - 30px) !important;
-        min-width: auto !important;
-        top: 60px !important;          
-        left: 50% !important;
-        right: auto !important;
-        bottom: auto !important;
-        transform: translateX(-50%) !important;  
-        opacity: 0 !important;
-        pointer-events: none !important;
-        transition: opacity 0.3s ease !important;
-    }
-    
-    .indextts-player-window.visible {
-        opacity: 1 !important;
-        pointer-events: auto !important;
-        transform: translateX(-50%) !important;
-    }
-}
-
-/* ---- Top Row: Cover + Info + Controls + Speed + Close ---- */
+/* 顶栏：封面 + 信息 + 控制按钮 + 倍速 + 关闭 */
 .indextts-player-top {
     display: flex;
     align-items: center;
@@ -196,12 +163,11 @@ v1.2.6
     padding: 14px 14px 8px;
 }
 
-/* Cover Art */
+/* 封面样式 */
 .indextts-player-cover {
     width: 44px;
     height: 44px;
     border-radius: 10px;
-    object-fit: cover;
     background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(0,0,0,0.4) 100%);
     flex-shrink: 0;
     border: 1px solid rgba(255, 255, 255, 0.1);
@@ -220,7 +186,7 @@ v1.2.6
     object-fit: cover;
 }
 
-/* Info (name + text) */
+/* 信息区（角色名 + 台词） */
 .indextts-player-info {
     flex: 1;
     min-width: 0;
@@ -268,7 +234,7 @@ v1.2.6
     }
 }
 
-/* Transport Controls (Prev / Play / Next) */
+/* 播放控制 (上一层 / 播放 / 下一层) */
 .indextts-player-controls {
     display: flex;
     align-items: center;
@@ -318,7 +284,7 @@ v1.2.6
     box-shadow: 0 4px 16px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.15);
 }
 
-/* Speed & Volume Area Shared Popup Logic */
+/* 倍速与音量区域共用弹出逻辑 */
 .indextts-player-speed-area,
 .indextts-player-volume-area {
     position: relative;
@@ -330,15 +296,15 @@ v1.2.6
 .indextts-player-volume-btn {
     font-size: 0.75em;
     padding: 3px 7px;
-    background: rgba(255, 255, 255, 0.07);
-    border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.07);
+    color: var(--SmartThemeBodyColor, #bbb);
     cursor: pointer;
     user-select: none;
-    transition: all 0.2s ease;
-    min-width: 34px;
+    min-width: 38px;
     text-align: center;
-    color: var(--SmartThemeBodyColor, #bbb);
+    transition: all 0.18s ease;
     letter-spacing: 0.02em;
 }
 
@@ -381,7 +347,7 @@ v1.2.6
     transform: translateX(-50%) translateY(0);
 }
 
-/* Range Sliders Unification & Premium Styling */
+/* 滑块统一样式与高级美化 */
 .indextts-speed-slider,
 .indextts-volume-slider {
     -webkit-appearance: none;
@@ -396,7 +362,9 @@ v1.2.6
     direction: rtl;
 }
 
-/* Chrome/Safari Vertical Range Input Hack */
+/* 垂直滑块兼容处理：上方 writing-mode 是新版标准方案，
+   下方 [orient="vertical"] + slider-vertical 是旧版方案，
+   两者并存以适配不同浏览器内核，属有意为之 */
 .indextts-speed-slider[orient="vertical"],
 .indextts-volume-slider[orient="vertical"] {
     -webkit-appearance: slider-vertical;
@@ -405,7 +373,7 @@ v1.2.6
     height: 100px;
 }
 
-/* Custom Thumb */
+/* 自定义滑块 */
 .indextts-speed-slider::-webkit-slider-thumb,
 .indextts-volume-slider::-webkit-slider-thumb {
     -webkit-appearance: none;
@@ -425,7 +393,7 @@ v1.2.6
     background: var(--SmartThemeQuoteColor, #ff7e33);
 }
 
-/* Custom Track (for browsers that support it) */
+/* 滑块轨道（兼容支持的浏览器） */
 .indextts-speed-slider::-webkit-slider-runnable-track,
 .indextts-volume-slider::-webkit-slider-runnable-track {
     width: 4px;
@@ -433,7 +401,7 @@ v1.2.6
     border-radius: 2px;
 }
 
-/* Inline Right-Click Editor */
+/* 行内右键编辑器 */
 .indextts-inline-edit-input {
     width: 100%;
     height: 100%;
@@ -448,35 +416,14 @@ v1.2.6
     margin: 0;
 }
 
-/* Hide number input spinners */
+/* 隐藏数字输入框微调按钮 */
 .indextts-inline-edit-input::-webkit-outer-spin-button,
 .indextts-inline-edit-input::-webkit-inner-spin-button {
     -webkit-appearance: none;
     margin: 0;
 }
 
-.indextts-player-speed-btn {
-    font-size: 0.75em;
-    padding: 3px 7px;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    background: rgba(255, 255, 255, 0.07);
-    color: var(--SmartThemeBodyColor, #bbb);
-    cursor: pointer;
-    user-select: none;
-    min-width: 38px;
-    text-align: center;
-    transition: all 0.18s ease;
-    letter-spacing: 0.02em;
-}
-
-.indextts-player-speed-btn:hover {
-    background: rgba(255, 255, 255, 0.14);
-    border-color: rgba(255, 255, 255, 0.25);
-    color: var(--SmartThemeBodyColor, #eee);
-}
-
-/* Close Button */
+/* 关闭按钮 */
 .indextts-player-close {
     width: 26px;
     height: 26px;
@@ -500,12 +447,12 @@ v1.2.6
     transform: scale(1.1);
 }
 
-/* ---- Bottom: Progress Bar + Time ---- */
+/* 底栏：进度条 + 时间 */
 .indextts-player-bottom {
     padding: 4px 14px 12px;
 }
 
-/* Custom Progress Bar (range input) */
+/* 进度条（范围输入） */
 .indextts-player-progress {
     -webkit-appearance: none;
     appearance: none;
@@ -514,17 +461,12 @@ v1.2.6
     border-radius: 99px;
     background: linear-gradient(
         to right,
-        rgba(255,255,255,0.35) var(--progress, 0%),
-        rgba(255,255,255,0.1) var(--progress, 0%)
+        rgba(255,255,255,0.35) var(--value, 0%),
+        rgba(255,255,255,0.1) var(--value, 0%)
     );
     outline: none;
     cursor: pointer;
     margin: 4px 0;
-    transition: height 0.15s ease;
-}
-
-.indextts-player-progress:hover {
-    height: 5px;
 }
 
 .indextts-player-progress::-webkit-slider-thumb {
@@ -561,7 +503,7 @@ v1.2.6
     border-radius: 99px;
 }
 
-/* Time Label */
+/* 时间标签 */
 .indextts-player-time {
     display: flex;
     justify-content: space-between;
@@ -798,10 +740,14 @@ v1.2.6
     gap: 10px;
     padding: 10px 0;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    transition: background-color 0.15s ease;
 }
-
 .indextts-char-row:last-child {
     border-bottom: none;
+}
+.indextts-char-row:hover {
+    background-color: var(--white10a, rgba(255, 255, 255, 0.05));
 }
 
 .indextts-char-name {
@@ -1094,36 +1040,6 @@ v1.2.6
 }
 
 /* ============================================================
-   Row Enhancements (行样式增强)
-   ============================================================ */
-.indextts-char-row {
-    transition: background-color 0.15s ease;
-    border-radius: 4px;
-    /* Optional: adds rounded corners */
-}
-
-.indextts-char-row:hover {
-    background-color: var(--white10a, rgba(255, 255, 255, 0.05));
-}
-
-.indextts-drop-area.configured {
-    border-color: var(--active, rgb(88, 182, 0));
-    background: rgba(88, 182, 0, 0.05);
-    /* Lighter background */
-}
-
-.indextts-drop-area.configured .indextts-drop-text {
-    color: var(--active, rgb(88, 182, 0));
-}
-
-/* ============================================================
-   Utility
-   ============================================================ */
-.wide100p {
-    width: 100% !important;
-}
-
-/* ============================================================
    Preset Management Bar (预设管理栏)
    ============================================================ */
 .indextts-preset-bar,
@@ -1168,13 +1084,65 @@ v1.2.6
     background-color: var(--white20a, rgba(255, 255, 255, 0.1));
 }
 
-/* Popup variant padding */
+/* 弹窗版内边距 */
 .indextts-preset-bar-popup {
     padding: 8px 16px;
     background: var(--black30a, rgba(0, 0, 0, 0.3));
     border-bottom: 1px solid var(--SmartThemeBorderColor, rgba(0, 0, 0, 0.5));
 }
+
+/* ============================================================
+   底部播放进度发光条（播放音频时页面底部的发光线条）
+   ============================================================ */
+#indextts-bottom-progress {
+    position: fixed;
+    left: 0;
+    bottom: 0;
+    height: 1.5px;
+    width: 0%;
+    background: linear-gradient(90deg, rgba(255, 126, 51, 0.1), var(--SmartThemeQuoteColor, #D3DCE2));
+    box-shadow: 0 0 8px var(--SmartThemeQuoteColor, #D3DCE2);
+    z-index: 99998;
+    pointer-events: none;
+    transition: width 0.25s linear, opacity 0.3s linear;
+}
+
+@media (min-width: 769px) {
+    #indextts-bottom-progress { display: none; }
+}
+
+/* ============================================================
+    移动端适配
+   ============================================================ */
 @media (max-width: 768px) {
+    /*强制恢复 fixed 定位的包含块（修复移动端 fixed 失效）*/
+    html, body {
+    transform: none !important;
+    perspective: none !important;
+    filter: none !important;
+    contain: none !important;
+    }
+    /*悬浮播放器*/
+    .indextts-player-window {
+        width: calc(100vw - 30px) !important;
+        min-width: auto !important;
+        top: 60px !important;          
+        left: 50% !important;
+        right: auto !important;
+        bottom: auto !important;
+        transform: translateX(-50%) !important;  
+        opacity: 0 !important;
+        pointer-events: none !important;
+        transition: opacity 0.3s ease !important;
+    }
+    
+    .indextts-player-window.visible {
+        opacity: 1 !important;
+        pointer-events: auto !important;
+        transform: translateX(-50%) !important;
+    }
+
+    /* 配音弹窗角色列表*/
     /* 角色名：自适应，释放多余空间 */
     .indextts-char-name {
         width: auto !important;

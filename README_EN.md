@@ -4,7 +4,7 @@ A Text-to-Speech (TTS) extension designed for SillyTavern.
 
 Based on the secondary modification [st-indextts2-plus](https://github.com/xiaoxiongweihu/st-indextts2-plus) of the original plugin [indexTTS player](https://github.com/bronie-honkai/st-indextts2), further developed and optimized to make your SillyTavern voice experience smoother.
 
-Version: 1.2.6 | Author: Thirteen-Moons
+Version: 1.2.7 | Author: Thirteen-Moons
 
 <br>
 
@@ -456,9 +456,20 @@ Example:
 - Matched common beautification code blocks, such as ```<div style="...">```. Content in status bars using such beautification regexes will not be read aloud.
 - Matched and allowed common text beautification, such as ```<mark>, <u>```. Text/lines wrapped in such beautification can be played normally.
 
+<br>
+
 ## 📝 v1.2.6
 ### Fixes
 Adjust the logic and notifications for update checks
+
+<br>
+
+## 📝v1.2.7
+- **Fixed**: Fixed some potential bugs that had not yet affected functionality.
+- **Cleaned**: Removed deprecated code and redundant code (but retained the dead code chain for the drag-and-drop file feature in case it is needed in the future), removed excess debug logs, and reduced pop-up notifications.
+- **Organised**: Merged some redundant code and sections, standardised comments, logs, and pop-ups in Chinese.
+- **Performance Optimisation**: Modified some event listeners and cleanup logic to reduce memory usage, improve initial response, and optimise performance.
+- **UI Additions**: Added a bottom input box for mobile devices and a glowing progress bar displayed during playback.
 
 ---  
 
